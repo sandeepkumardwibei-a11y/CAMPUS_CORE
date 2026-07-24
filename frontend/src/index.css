@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #f4f5fb;
+  --bg-2: #eceef8;
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-solid: #ffffff;
+  --border: rgba(15, 23, 42, 0.08);
+  --border-strong: rgba(15, 23, 42, 0.14);
+  --text: #0f172a;
+  --text-muted: #5b6478;
+  --text-faint: #8a93a6;
+  --ring: rgba(16, 185, 129, 0.4);
+  --shadow: 0 10px 30px -12px rgba(6, 78, 59, 0.25);
+}
+
+.dark {
+  --bg: #070912;
+  --bg-2: #0c1020;
+  --surface: rgba(20, 24, 42, 0.66);
+  --surface-solid: #11152a;
+  --border: rgba(148, 163, 184, 0.12);
+  --border-strong: rgba(148, 163, 184, 0.22);
+  --text: #eef1fb;
+  --text-muted: #a3acc4;
+  --text-faint: #6b7490;
+  --ring: rgba(52, 211, 153, 0.5);
+  --shadow: 0 18px 50px -18px rgba(0, 0, 0, 0.7);
+}
+
+* { -webkit-tap-highlight-color: transparent; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color .3s ease, color .3s ease;
+}
+
+/* Ambient aurora background */
+.aurora-bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.aurora-bg::before, .aurora-bg::after {
+  content: ''; position: absolute; border-radius: 9999px; filter: blur(80px); opacity: .55;
+}
+.aurora-bg::before {
+  width: 46vw; height: 46vw; top: -12vw; left: -8vw;
+  background: radial-gradient(circle at 30% 30%, #10b981, transparent 70%);
+  animation: auroraA 18s ease-in-out infinite;
+}
+.aurora-bg::after {
+  width: 40vw; height: 40vw; bottom: -14vw; right: -8vw;
+  background: radial-gradient(circle at 60% 60%, #4ade80, transparent 70%);
+  animation: auroraB 22s ease-in-out infinite;
+}
+.dark .aurora-bg::before { opacity: .32; }
+.dark .aurora-bg::after { opacity: .3; }
+@keyframes auroraA { 0%,100%{transform:translate(0,0)} 50%{transform:translate(6%,8%)} }
+@keyframes auroraB { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-6%,-6%)} }
+
+@media (prefers-reduced-motion: reduce) {
+  *, .aurora-bg::before, .aurora-bg::after { animation: none !important; }
+}
+
+/* Glass surfaces */
+.glass {
+  background: var(--surface);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.gradient-text {
+  background: linear-gradient(100deg, #059669, #10b981 45%, #34d399);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.gradient-btn {
+  background: linear-gradient(100deg, #059669, #10b981 55%, #16a34a);
+}
+.gradient-btn:hover { filter: brightness(1.08); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 9999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Inputs */
+.field {
+  width: 100%;
+  background: var(--surface-solid);
+  border: 1px solid var(--border-strong);
+  border-radius: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  color: var(--text);
+  caret-color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  min-height: 2.6rem;
+  vertical-align: middle;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.field::placeholder { color: var(--text-faint); }
+.field:focus { border-color: #10b981; box-shadow: 0 0 0 3px var(--ring); }
+/* Keep numeric values visible & aligned — hide the native spinners that can clip the value */
+input.field[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+input.field[type="number"]::-webkit-outer-spin-button,
+input.field[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+select.field { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%238a93a6' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right .7rem center; padding-right: 2rem; }
+
+.label { display:block; font-size: .78rem; font-weight: 600; color: var(--text-muted); margin-bottom: .35rem; letter-spacing: .01em; }
+
+/* Focus visible for a11y */
+:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }

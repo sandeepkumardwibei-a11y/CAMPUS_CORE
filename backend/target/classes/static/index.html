@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampusCore - Premium University Management System</title>
+    <!-- Style CSS -->
+    <link rel="stylesheet" href="/style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Auth Module (Full Page Screen if not authenticated) -->
+    <div id="auth-screen" class="auth-wrapper">
+        <div class="auth-container glass-panel">
+            <div class="auth-logo">
+                <i data-lucide="graduation-cap" style="width: 36px; height: 36px; color: var(--primary)"></i>
+                <h1>CampusCore</h1>
+            </div>
+            
+            <!-- Auth Form Toggles -->
+            <div class="tab-container" style="justify-content: center;">
+                <button id="tab-login" class="tab-btn active" onclick="switchAuthTab('login')">Sign In</button>
+                <button id="tab-register" class="tab-btn" onclick="switchAuthTab('register')">Register</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form active-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label" for="login-email">Email Address</label>
+                    <input type="email" id="login-email" class="form-control" placeholder="name@campuscore.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="login-password">Password</label>
+                    <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+                    <span>Sign In</span>
+                    <i data-lucide="arrow-right" style="width: 16px;"></i>
+                </button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="register-form" class="auth-form" style="display: none;" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label class="form-label" for="reg-name">Full Name</label>
+                    <input type="text" id="reg-name" class="form-control" placeholder="John Doe" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="reg-email">Email Address</label>
+                    <input type="email" id="reg-email" class="form-control" placeholder="john@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="reg-password">Password</label>
+                    <input type="password" id="reg-password" class="form-control" placeholder="Minimum 8 characters" minlength="8" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="reg-phone">Phone Number</label>
+                    <input type="text" id="reg-phone" class="form-control" placeholder="1234567890">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="reg-role">Account Role</label>
+                    <select id="reg-role" onchange="toggleRegDetails()" required>
+                        <option value="APPLICANT">Applicant (Admission Portal)</option>
+                        <option value="STUDENT">Student</option>
+                        <option value="FACULTY">Faculty (Instructor)</option>
+                    </select>
+                </div>
+                <!-- Extra Registration Details (Optional program id / department id) -->
+                <div id="reg-dept-group" class="form-group" style="display: none;">
+                    <label class="form-label" for="reg-dept">Department / Program ID</label>
+                    <select id="reg-program" class="form-control">
+                        <!-- Loaded dynamically -->
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+                    <span>Create Account</span>
+                    <i data-lucide="user-plus" style="width: 16px;"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Core App Container (Hidden when not logged in) -->
+    <div id="app-screen" class="app-container" style="display: none;">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar glass-panel">
+            <div class="logo-section">
+                <i data-lucide="graduation-cap" style="width: 28px; height: 28px; color: var(--primary)"></i>
+                <span class="logo-text">CampusCore</span>
+            </div>
+
+            <!-- Dynamic Menu Items based on User Role -->
+            <nav id="sidebar-menu" class="menu-section">
+                <!-- Will be populated dynamically via Javascript -->
+            </nav>
+
+            <!-- User Profile & Sign Out -->
+            <div class="user-profile-section">
+                <div id="user-avatar" class="avatar">CC</div>
+                <div class="user-info">
+                    <h4 id="user-display-name">Guest User</h4>
+                    <p id="user-display-role">Student</p>
+                </div>
+                <button class="btn btn-secondary" onclick="handleLogout()" style="padding: 8px; border-radius: 50%; min-width: auto; margin-left: auto;" title="Sign Out">
+                    <i data-lucide="log-out" style="width: 16px; height: 16px;"></i>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header bar -->
+            <header class="glass-panel" style="border-radius: 0; border-top: none; border-left: none; border-right: none;">
+                <h2 id="current-page-title" class="page-title">Dashboard Overview</h2>
+                <div class="header-actions">
+                    <!-- Notifications Dropdown Trigger -->
+                    <div class="notif-bell" onclick="toggleNotificationsPanel()">
+                        <i data-lucide="bell" style="width: 20px; height: 20px;"></i>
+                        <span id="unread-notifications-count" class="notif-count" style="display: none;">0</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Body -->
+            <div class="content-body">
+                
+                <!-- SECTION: COMMON HOME DASHBOARD -->
+                <section id="page-dashboard" class="page-section active">
+                    <div class="glass-card" style="margin-bottom: 30px; background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.1), transparent);">
+                        <h1 id="welcome-message" style="font-size: 28px; margin-bottom: 8px; font-family: 'Outfit';">Welcome Back, User!</h1>
+                        <p style="color: var(--text-secondary); max-width: 600px;">Access your classes, grades, hostels, exams, facility bookings, and administrative modules from this unified glassmorphic portal.</p>
+                    </div>
+
+                    <!-- Metric Widgets based on role -->
+                    <div id="dashboard-metrics" class="metrics-grid">
+                        <!-- Loaded dynamically -->
+                    </div>
+
+                    <!-- Quick Details Panel -->
+                    <div class="action-grid" id="dashboard-summary-panels">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </section>
+
+                <!-- SECTION: NOTIFICATIONS -->
+                <section id="page-notifications" class="page-section">
+                    <div class="glass-panel" style="padding: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3>Notifications Centre</h3>
+                            <button class="btn btn-secondary" onclick="markAllNotificationsRead()">Mark All Read</button>
+                        </div>
+                        <div id="notifications-list" style="display: flex; flex-direction: column; gap: 12px;">
+                            <!-- Populated dynamically -->
+                            <p style="color: var(--text-muted); text-align: center;">No notifications.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: APPLICANT - APPLY -->
+                <section id="page-applicant-apply" class="page-section">
+                    <div class="glass-panel" style="padding: 30px; max-width: 650px; margin: 0 auto;">
+                        <h3 style="margin-bottom: 20px;">Admission Application Form</h3>
+                        <form id="applicant-apply-form" onsubmit="submitAdmissionApplication(event)">
+                            <div class="form-group">
+                                <label class="form-label">Applicant Full Name</label>
+                                <input type="text" id="apply-name" class="form-control" required readonly>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Email Address</label>
+                                <input type="email" id="apply-email" class="form-control" required readonly>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Phone Number</label>
+                                    <input type="text" id="apply-phone" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Academic Year</label>
+                                    <input type="text" id="apply-year" class="form-control" value="2026-2027" placeholder="e.g. 2026-2027" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Target Academic Program</label>
+                                    <select id="apply-program" required></select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Qualifying Score (%) / CGPA</label>
+                                    <input type="number" step="0.01" min="0" max="100" id="apply-score" class="form-control" placeholder="e.g. 92.50" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Submit Application</button>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- SECTION: APPLICANT - TRACK STATUS -->
+                <section id="page-applicant-track" class="page-section">
+                    <div class="glass-panel" style="padding: 24px;">
+                        <h3 style="margin-bottom: 20px;">My Admission Applications</h3>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>App ID</th>
+                                        <th>Program Name</th>
+                                        <th>Academic Year</th>
+                                        <th>Qualifying Score</th>
+                                        <th>Apply Date</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="applicant-track-tbody">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: STUDENT - COURSE REGISTRATION -->
+                <section id="page-student-registration" class="page-section">
+                    <div class="glass-panel" style="padding: 24px; margin-bottom: 25px;">
+                        <h3>Semester Registration</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 20px;">Select your academic semester and enroll in courses offered for your program.</p>
+                        
+                        <div class="form-row" style="max-width: 600px;">
+                            <div class="form-group">
+                                <label class="form-label">Academic Year</label>
+                                <input type="text" id="stud-reg-year" class="form-control" value="2026-2027" placeholder="e.g. 2026-2027">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Semester</label>
+                                <select id="stud-reg-semester" onchange="loadOfferedCourses()">
+                                    <option value="1">Semester 1</option>
+                                    <option value="2">Semester 2</option>
+                                    <option value="3" selected>Semester 3</option>
+                                    <option value="4">Semester 4</option>
+                                    <option value="5">Semester 5</option>
+                                    <option value="6">Semester 6</option>
+                                    <option value="7">Semester 7</option>
+                                    <option value="8">Semester 8</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel" style="padding: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h4>Offered Courses Catalog</h4>
+                            <button class="btn btn-primary" onclick="submitSemesterRegistration()">Submit Registration Request</button>
+                        </div>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 50px;">Select</th>
+                                        <th>Code</th>
+                                        <th>Course Name</th>
+                                        <th>Credits</th>
+                                        <th>Faculty Instructor</th>
+                                        <th>Max Seats</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="student-courses-tbody">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: STUDENT - ATTENDANCE -->
+                <section id="page-student-attendance" class="page-section">
+                    <div class="glass-panel" style="padding: 24px;">
+                        <h3 style="margin-bottom: 20px;">Academic Attendance Tracker</h3>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Course Code</th>
+                                        <th>Course Name</th>
+                                        <th>Total Lectures</th>
+                                        <th>Attended Lectures</th>
+                                        <th>Attendance Rate</th>
+                                        <th>Status Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="student-attendance-tbody">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: STUDENT - GRADES -->
+                <section id="page-student-grades" class="page-section">
+                    <div class="glass-panel" style="padding: 24px; margin-bottom: 25px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3>Official Grade Card</h3>
+                            <div style="text-align: right;">
+                                <h4 id="student-gpa-display" style="font-family: 'Outfit'; color: var(--secondary);">CGPA: -- / SGPA: --</h4>
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Course Code</th>
+                                        <th>Course Name</th>
+                                        <th>Marks Obtained</th>
+                                        <th>Max Marks</th>
+                                        <th>Grade Letter</th>
+                                        <th>Publish Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="student-grades-tbody">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel" style="padding: 24px;">
+                        <h3>Completed Semester Result Cards</h3>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Academic Year</th>
+                                        <th>Semester</th>
+                                        <th>SGPA</th>
+                                        <th>CGPA</th>
+                                        <th>Backlogs Count</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="student-results-tbody">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: STUDENT - FEE INVOICES -->
+                <section id="page-student-fees" class="page-section">
+                    <div class="glass-panel" style="padding: 24px;">
+                        <h3 style="margin-bottom: 20px;">Semester Invoices & Fee Ledger</h3>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Invoice ID</th>
+                                        <th>Academic Year</th>
+                                        <th>Semester</th>
+                                        <th>Tuition Fee</th>
+                                        <th>Hostel Fee</th>
+                                        <th>Net Payable</th>
+                                        <th>Due Date</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="student-fees-tbody">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: STUDENT - FACILITY BOOKING -->
+                <section id="page-student-booking" class="page-section">
+                    <div class="form-row" style="margin-bottom: 25px;">
+                        <div class="glass-panel" style="padding: 24px;">
+                            <h3>Book Campus Facility</h3>
+                            <form id="facility-booking-form" onsubmit="requestFacilityBooking(event)" style="margin-top: 15px;">
+                                <div class="form-group">
+                                    <label class="form-label">Facility Name</label>
+                                    <select id="book-facility-name" required>
+                                        <option value="Seminar Hall">Seminar Hall</option>
+                                        <option value="Library Discussion Room">Library Discussion Room</option>
+                                        <option value="Conference Hall">Conference Hall</option>
+                                        <option value="Auditorium Block C">Auditorium Block C</option>
+                                        <option value="Indoor Sports Court">Indoor Sports Court</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Booking Date</label>
+                                    <input type="date" id="book-date" class="form-control" required>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Start Time</label>
+                                        <input type="time" id="book-start" class="form-control" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">End Time</label>
+                                        <input type="time" id="book-end" class="form-control" required>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Purpose of Booking</label>
+                                    <input type="text" id="book-purpose" class="form-control" placeholder="e.g. Study Group Session" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Submit Request</button>
+                            </form>
+                        </div>
+
+                        <div class="glass-panel" style="padding: 24px;">
+                            <h3>My Facility Bookings</h3>
+                            <div class="table-wrapper" style="max-height: 380px; overflow-y: auto;">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Facility</th>
+                                            <th>Date / Time</th>
+                                            <th>Purpose</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="student-bookings-tbody">
+                                        <!-- Populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: FACULTY - ATTENDANCE -->
+                <section id="page-faculty-attendance" class="page-section">
+                    <div class="glass-panel" style="padding: 24px; margin-bottom: 25px;">
+                        <h3>Class Attendance Management</h3>
+                        <div class="form-row" style="max-width: 700px; margin-top: 15px;">
+                            <div class="form-group">
+                                <label class="form-label">Select Assigned Course</label>
+                                <select id="faculty-attendance-course" onchange="loadCourseStudentsForAttendance()" required></select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Lecture Date</label>
+                                <input type="date" id="faculty-attendance-date" class="form-control" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel" style="padding: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h4>Course Enrollments Sheet</h4>
+                            <button class="btn btn-success" onclick="submitFacultyAttendance()">
+                                <i data-lucide="check" style="width: 16px;"></i> Submit Attendance
+                            </button>
+                        </div>
+                        <div class="attendance-grid" id="faculty-attendance-sheet">
+                            <!-- Populated dynamically -->
+                            <p style="color: var(--text-muted); text-align: center;">Please select a course to load the enrollment sheet.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: FACULTY - POST GRADES -->
+                <section id="page-faculty-grades" class="page-section">
+                    <div class="glass-panel" style="padding: 24px; margin-bottom: 25px;">
+                        <h3>Post Student Grades</h3>
+                        <div class="form-row" style="max-width: 800px; margin-top: 15px;">
+                            <div class="form-group">
+                                <label class="form-label">Select Course</label>
+                                <select id="faculty-grades-course" onchange="loadCourseExams()" required></select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Select Scheduled Exam</label>
+                                <select id="faculty-grades-exam" onchange="loadExamGradesSheet()" required></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel" style="padding: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h4 id="faculty-exam-sheet-title">Student Marks Entries</h4>
+                            <button class="btn btn-primary" onclick="submitFacultyGrades()">Save Draft Grades</button>
+                        </div>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Student ID</th>
+                                        <th>Student Name</th>
+                                        <th>Marks Obtained</th>
+                                        <th>Max Marks</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="faculty-grades-tbody">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: EXAM CONTROLLER - SCHEDULE EXAMS -->
+                <section id="page-exam-schedule" class="page-section">
+                    <div class="form-row">
+                        <div class="glass-panel" style="padding: 24px;">
+                            <h3>Schedule Academic Exam</h3>
+                            <form id="exam-schedule-form" onsubmit="handleScheduleExam(event)" style="margin-top: 15px;">
+                                <div class="form-group">
+                                    <label class="form-label">Course Catalog</label>
+                                    <select id="schedule-exam-course" required></select>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Semester</label>
+                                        <input type="number" id="schedule-exam-sem" class="form-control" value="3" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Academic Year</label>
+                                        <input type="text" id="schedule-exam-year" class="form-control" value="2026-2027" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Exam Type</label>
+                                        <select id="schedule-exam-type" required>
+                                            <option value="MID_TERM">Mid Term Exam</option>
+                                            <option value="END_TERM">End Term Exam</option>
+                                            <option value="LAB_VIVA">Lab Viva Voce</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Max Marks</label>
+                                        <input type="number" id="schedule-exam-max-marks" class="form-control" value="100" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Exam Date</label>
+                                        <input type="date" id="schedule-exam-date" class="form-control" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Start Time</label>
+                                        <input type="time" id="schedule-exam-time" class="form-control" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Duration (Mins)</label>
+                                        <input type="number" id="schedule-exam-duration" class="form-control" value="180" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Venue / Hall</label>
+                                        <input type="text" id="schedule-exam-venue" class="form-control" placeholder="e.g. Hall-101" required>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Schedule Exam</button>
+                            </form>
+                        </div>
+
+                        <div class="glass-panel" style="padding: 24px;">
+                            <h3>Scheduled Exams Registry</h3>
+                            <div class="table-wrapper" style="max-height: 480px; overflow-y: auto;">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Course</th>
+                                            <th>Exam / Date</th>
+                                            <th>Max Marks</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="exam-registry-tbody">
+                                        <!-- Populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: EXAM CONTROLLER - RESULT CARD COMPILER -->
+                <section id="page-exam-compiler" class="page-section">
+                    <div class="form-row">
+                        <div class="glass-panel" style="padding: 24px;">
+                            <h3>Compile GPA Result Card</h3>
+                            <form id="result-compiler-form" onsubmit="handleCompileResult(event)" style="margin-top: 15px;">
+                                <div class="form-group">
+                                    <label class="form-label">Select Student</label>
+                                    <select id="compile-student-id" required></select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Academic Year</label>
+                                    <input type="text" id="compile-year" class="form-control" value="2026-2027" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Semester</label>
+                                    <select id="compile-semester" required>
+                                        <option value="1">Semester 1</option>
+                                        <option value="2">Semester 2</option>
+                                        <option value="3" selected>Semester 3</option>
+                                        <option value="4">Semester 4</option>
+                                        <option value="5">Semester 5</option>
+                                        <option value="6">Semester 6</option>
+                                        <option value="7">Semester 7</option>
+                                        <option value="8">Semester 8</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Compile and Save Result</button>
+                            </form>
+                        </div>
+
+                        <div class="glass-panel" style="padding: 24px;">
+                            <h3>All Student Results Registry</h3>
+                            <div class="table-wrapper" style="max-height: 480px; overflow-y: auto;">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Student</th>
+                                            <th>Sem / Year</th>
+                                            <th>SGPA</th>
+                                            <th>CGPA</th>
+                                            <th>Backlogs</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="results-registry-tbody">
+                                        <!-- Populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: ACCOUNTS - LEDGER -->
+                <section id="page-accounts-ledger" class="page-section">
+                    <div class="form-row">
+                        <div class="glass-panel" style="padding: 24px;">
+                            <h3>Generate Semester Invoice</h3>
+                            <form id="generate-invoice-form" onsubmit="handleGenerateInvoice(event)" style="margin-top: 15px;">
+                                <div class="form-group">
+                                    <label class="form-label">Select Student</label>
+                                    <select id="invoice-student-id" required></select>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Academic Year</label>
+                                        <input type="text" id="invoice-year" class="form-control" value="2026-2027" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Semester</label>
+                                        <input type="number" id="invoice-semester" class="form-control" value="3" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Tuition Fee ($)</label>
+                                        <input type="number" id="invoice-tuition" class="form-control" value="5000" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Hostel Fee ($)</label>
+                                        <input type="number" id="invoice-hostel" class="form-control" value="1200" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Lab Fee ($)</label>
+                                        <input type="number" id="invoice-lab" class="form-control" value="300" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Activity Fee ($)</label>
+                                        <input type="number" id="invoice-activity" class="form-control" value="200" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Scholarship / Waiver ($)</label>
+                                        <input type="number" id="invoice-scholarship" class="form-control" value="0" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Payment Due Date</label>
+                                        <input type="date" id="invoice-duedate" class="form-control" required>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Generate Invoice</button>
+                            </form>
+                        </div>
+
+                        <div class="glass-panel" style="padding: 24px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                <h3>Invoices Ledger</h3>
+                                <select id="ledger-filter-status" onchange="loadAccountsLedger()" style="width: 150px; padding: 6px 12px;">
+                                    <option value="PENDING">Pending</option>
+                                    <option value="PAID">Paid</option>
+                                </select>
+                            </div>
+                            <div class="table-wrapper" style="max-height: 480px; overflow-y: auto;">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Invoice ID</th>
+                                            <th>Student</th>
+                                            <th>Net Amount</th>
+                                            <th>Due Date</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ledger-invoices-tbody">
+                                        <!-- Populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: ADMIN - DEPARTMENTS & PROGRAMS -->
+                <section id="page-admin-programs" class="page-section">
+                    <div class="form-row">
+                        <div class="glass-panel" style="padding: 24px;">
+                            <h3>Create Academic Program</h3>
+                            <form id="create-program-form" onsubmit="handleCreateProgram(event)" style="margin-top: 15px;">
+                                <div class="form-group">
+                                    <label class="form-label">Program Name</label>
+                                    <input type="text" id="prog-name" class="form-control" placeholder="e.g. B.Tech Cyber Security" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Department ID</label>
+                                    <input type="number" id="prog-dept" class="form-control" value="1" required>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Level</label>
+                                        <select id="prog-level" required>
+                                            <option value="UG">Undergraduate (UG)</option>
+                                            <option value="PG">Postgraduate (PG)</option>
+                                            <option value="PHD">Doctorate (PhD)</option>
+                                            <option value="DIPLOMA">Diploma</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Duration (Years)</label>
+                                        <input type="number" id="prog-duration" class="form-control" value="4" required>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Total Seats Available</label>
+                                    <input type="number" id="prog-seats" class="form-control" value="60" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Create Program</button>
+                            </form>
+                        </div>
+
+                        <div class="glass-panel" style="padding: 24px;">
+                            <h3>Existing Campus Programs</h3>
+                            <div class="table-wrapper" style="max-height: 480px; overflow-y: auto;">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Program ID</th>
+                                            <th>Program Name</th>
+                                            <th>Level / Years</th>
+                                            <th>Seats</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-programs-tbody">
+                                        <!-- Populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: ADMIN - COURSES -->
+                <section id="page-admin-courses" class="page-section">
+                    <div class="form-row">
+                        <div class="glass-panel" style="padding: 24px;">
+                            <h3>Create Academic Course</h3>
+                            <form id="create-course-form" onsubmit="handleCreateCourse(event)" style="margin-top: 15px;">
+                                <div class="form-group">
+                                    <label class="form-label">Course Title</label>
+                                    <input type="text" id="course-title" class="form-control" placeholder="e.g. Distributed Systems" required>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Course Code</label>
+                                        <input type="text" id="course-code" class="form-control" placeholder="e.g. CS401" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Academic Program</label>
+                                        <select id="course-program-id" required></select>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Semester</label>
+                                        <input type="number" id="course-semester" class="form-control" value="3" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Credits</label>
+                                        <input type="number" id="course-credits" class="form-control" value="4" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Max Seat Limit</label>
+                                        <input type="number" id="course-max-seats" class="form-control" value="60" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Faculty Instructor</label>
+                                        <select id="course-faculty-id" required></select>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Create Course</button>
+                            </form>
+                        </div>
+
+                        <div class="glass-panel" style="padding: 24px;">
+                            <h3>Course Catalog List</h3>
+                            <div class="table-wrapper" style="max-height: 480px; overflow-y: auto;">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Code</th>
+                                            <th>Title</th>
+                                            <th>Program (Sem)</th>
+                                            <th>Credits</th>
+                                            <th>Faculty</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-courses-tbody">
+                                        <!-- Populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: ADMIN - HOSTEL ALLOTMENT -->
+                <section id="page-admin-hostels" class="page-section">
+                    <div class="form-row">
+                        <div class="glass-panel" style="padding: 24px;">
+                            <h3>Allot Hostel Room</h3>
+                            <form id="hostel-allotment-form" onsubmit="handleAllotHostel(event)" style="margin-top: 15px;">
+                                <div class="form-group">
+                                    <label class="form-label">Select Student</label>
+                                    <select id="allot-student-id" required></select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Select Room</label>
+                                    <select id="allot-room-id" required></select>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Academic Year</label>
+                                        <input type="text" id="allot-year" class="form-control" value="2026-2027" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Check-in Date</label>
+                                        <input type="date" id="allot-date" class="form-control" required>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Allocate Room</button>
+                            </form>
+                        </div>
+
+                        <div class="glass-panel" style="padding: 24px;">
+                            <h3>Hostel Rooms Inventory</h3>
+                            <div class="table-wrapper" style="max-height: 480px; overflow-y: auto;">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Room Details</th>
+                                            <th>Type</th>
+                                            <th>Occupancy</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-hostels-tbody">
+                                        <!-- Populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: ADMIN - BOOKINGS -->
+                <section id="page-admin-bookings" class="page-section">
+                    <div class="glass-panel" style="padding: 24px;">
+                        <h3>Campus Facility Booking Requests</h3>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Booking ID</th>
+                                        <th>Facility Name</th>
+                                        <th>Requested By</th>
+                                        <th>Date & Time</th>
+                                        <th>Purpose</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-bookings-tbody">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: ADMIN - ADMISSION APPLICATIONS -->
+                <section id="page-admin-admissions" class="page-section">
+                    <div class="glass-panel" style="padding: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3>Admission Applications Registry</h3>
+                            <select id="admin-admissions-filter-status" onchange="loadAdminAdmissions()" style="width: 200px;">
+                                <option value="SUBMITTED">Submitted</option>
+                                <option value="SHORTLISTED">Shortlisted</option>
+                                <option value="DOCUMENTS_VERIFIED">Documents Verified</option>
+                                <option value="OFFER_ISSUED">Offer Issued</option>
+                                <option value="ENROLLED">Enrolled</option>
+                                <option value="REJECTED">Rejected</option>
+                                <option value="WITHDRAWN">Withdrawn</option>
+                            </select>
+                        </div>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>App ID</th>
+                                        <th>Applicant Name</th>
+                                        <th>Program Selected</th>
+                                        <th>Qualifying Score</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-admissions-tbody">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: ADMIN - USERS -->
+                <section id="page-admin-users" class="page-section">
+                    <div class="glass-panel" style="padding: 24px;">
+                        <h3 style="margin-bottom: 20px;">University Accounts Registry</h3>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>User ID</th>
+                                        <th>Full Name</th>
+                                        <th>Email</th>
+                                        <th>Phone</th>
+                                        <th>Role</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-users-tbody">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Payment Modal -->
+    <div id="payment-modal" class="modal-overlay">
+        <div class="modal-container glass-panel">
+            <div class="modal-header">
+                <h3>Submit Invoice Payment</h3>
+                <span class="modal-close" onclick="closePaymentModal()">&times;</span>
+            </div>
+            <form id="payment-form" onsubmit="submitInvoicePayment(event)">
+                <input type="hidden" id="pay-invoice-id">
+                <div class="form-group">
+                    <label class="form-label">Payment Amount ($)</label>
+                    <input type="text" id="pay-invoice-amount" class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Payment Mode</label>
+                    <select id="pay-invoice-mode" required>
+                        <option value="CREDIT_CARD">Credit Card / Debit Card</option>
+                        <option value="NET_BANKING">Net Banking</option>
+                        <option value="UPI">UPI Payment</option>
+                        <option value="CAMPUS_WALLET">Campus Wallet</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Reference No / Receipt Transaction ID</label>
+                    <input type="text" id="pay-invoice-ref" class="form-control" placeholder="e.g. TXN9876543210" required>
+                </div>
+                <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 15px;">Confirm Mock Payment</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script File -->
+    <script src="/app.js"></script>
+</body>
+</html>

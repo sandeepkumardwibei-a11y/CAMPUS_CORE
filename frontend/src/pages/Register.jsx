@@ -43,13 +43,13 @@ export default function Register() {
         <h2 className="font-display text-2xl font-bold" style={{ color: 'var(--text)' }}>Create your account</h2>
         <p className="mt-1 mb-6 text-sm" style={{ color: 'var(--text-muted)' }}>Join the campus operating system.</p>
 
-        <form onSubmit={submit} className="space-y-4">
-          <Field label="Full name"><Input required value={form.name} onChange={set('name')} placeholder="Ada Lovelace" /></Field>
+        <form onSubmit={submit} className="space-y-4" autoComplete="off">
+          <Field label="Full name"><Input required value={form.name} onChange={set('name')} placeholder="Ada Lovelace" autoComplete="off" /></Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Email"><Input type="email" required value={form.email} onChange={set('email')} placeholder="you@campus.edu" /></Field>
-            <Field label="Phone"><Input value={form.phone} onChange={set('phone')} placeholder="9000000000" /></Field>
+            <Field label="Email"><Input type="email" required value={form.email} onChange={set('email')} placeholder="you@campus.edu" autoComplete="off" name="registerEmail" /></Field>
+            <Field label="Phone"><Input value={form.phone} onChange={set('phone')} placeholder="9000000000" autoComplete="off" /></Field>
           </div>
-          <Field label="Password"><Input type="password" required value={form.password} onChange={set('password')} placeholder="At least 6 characters" /></Field>
+          <Field label="Password"><Input type="password" required value={form.password} onChange={set('password')} placeholder="At least 6 characters" autoComplete="new-password" name="registerPassword" /></Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Role"><Select options={ROLES} value={form.role} onChange={set('role')} /></Field>
             <Field label="Department ID" hint="Optional"><Input type="number" value={form.departmentId} onChange={set('departmentId')} placeholder="e.g. 1" /></Field>

@@ -5,11 +5,13 @@ import com.campuscore.dto.NotificationDto;
 import com.campuscore.entity.FeeInvoice;
 import com.campuscore.entity.FeePayment;
 import com.campuscore.entity.Notification.NotificationCategory;
+import com.campuscore.entity.SemesterRegistration;
 import com.campuscore.entity.User;
 import com.campuscore.exception.FeeException;
 import com.campuscore.exception.ResourceNotFoundException;
 import com.campuscore.repository.FeeInvoiceRepository;
 import com.campuscore.repository.FeePaymentRepository;
+import com.campuscore.repository.SemesterRegistrationRepository;
 import com.campuscore.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j; // Safe SLF4J logger import
@@ -36,6 +38,7 @@ public class FeeService {
     private final FeeInvoiceRepository invoiceRepository;
     private final FeePaymentRepository paymentRepository;
     private final UserRepository userRepository;
+    private final SemesterRegistrationRepository semesterRegistrationRepository;
     private final ApplicationEventPublisher eventPublisher; // 🔔 Injected event publisher for automatic alerts
     private final FileStorageService fileStorageService;
 
@@ -70,6 +73,19 @@ public class FeeService {
 
         if (student.getRole() != User.Role.STUDENT) {
             throw new FeeException("Invoice Generation Failed: The user ID " + request.getStudentId() + " is not a student account.");
+        }
+
+        List<SemesterRegistration> registrations = semesterRegistrationRepository
+                .findByStudentUserIdAndAcademicYearAndSemester(
+                        request.getStudentId(), request.getAcademicYear(), request.getSemester());
+
+        boolean hasActiveRegistration = registrations.stream()
+                .anyMatch(r -> r.getStatus() != SemesterRegistration.RegistrationStatus.WITHDRAWN);
+
+        if (!hasActiveRegistration) {
+            throw new FeeException("Invoice Generation Failed: Student " + request.getStudentId()
+                    + " is not registered for Semester " + request.getSemester()
+                    + " (" + request.getAcademicYear() + "). Please complete semester registration first.");
         }
 
         if (invoiceRepository.findByStudentUserIdAndAcademicYearAndSemester(

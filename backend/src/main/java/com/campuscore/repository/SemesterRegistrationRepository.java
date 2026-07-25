@@ -18,6 +18,13 @@ public interface SemesterRegistrationRepository extends JpaRepository<SemesterRe
     List<SemesterRegistration> findByStudentUserId(Long studentId);
 
     /**
+     * Used to verify (regardless of program) that a student has an active semester
+     * registration for the given academic year + semester before an invoice is generated.
+     */
+    List<SemesterRegistration> findByStudentUserIdAndAcademicYearAndSemester(
+            Long studentId, String academicYear, Integer semester);
+
+    /**
      * OPTIMIZED FETCH QUERY:
      * Pulls semester registrations containing the target courseId. It uses a JOIN FETCH 
      * to populate the lazy-loaded relationship safely in a single database trip.

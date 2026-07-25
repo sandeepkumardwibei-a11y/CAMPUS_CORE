@@ -581,3 +581,5 @@ class CourseControllerTest {
 - All notifications are **in-app only**; SMS and email alert integrations are out of scope
 - **Biometric attendance** capture is deferred; attendance is recorded via faculty entry on the portal
 - Fully implementable using standard **Java Spring Boot, Angular/React, and RDBMS** tooling
+#   C A M P U S _ C O R E  
+ 

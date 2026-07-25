@@ -5,7 +5,6 @@ import com.campuscore.dto.TimetableDto;
 import com.campuscore.service.TimetableService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j; // Added Lombok Slf4j annotation import
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -69,11 +68,12 @@ public class TimetableController {
     }
 
     /**
-     * 📊 TEXT-PLAIN TABULAR VIEW: Generates an exact plain text ASCII grid table directly inside the response body.
+     * 📊 JSON VIEW: Returns the student's schedule as a structured JSON list (matching the
+     * response shape of every other Timetable endpoint) so the frontend can render it.
      */
-    @GetMapping(value = "/student/{studentId}", produces = MediaType.TEXT_PLAIN_VALUE)
+    @GetMapping("/student/{studentId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'FACULTY', 'STUDENT')")
-    public ResponseEntity<String> getStudentSchedule(
+    public ResponseEntity<ApiResponse<List<TimetableDto.Response>>> getStudentSchedule(
             @PathVariable Long studentId,
             @RequestParam Long programId,
             @RequestParam String academicYear,
@@ -84,28 +84,8 @@ public class TimetableController {
 
         List<TimetableDto.Response> slots = timetableService.getStudentSchedule(studentId, programId, academicYear, semester);
 
-        // 1. Build the formal table string header layout grid frame
-        StringBuilder table = new StringBuilder();
-        table.append(String.format("%-12s | %-12s | %-25s | %-10s | %-10s | %-10s | %-8s\n",
-                "TIMETABLE ID", "COURSE CODE", "COURSE NAME", "DAY", "START", "END", "VENUE"));
-
-        // Generates the separator line exactly matching the length of the columns block
-        table.append("-".repeat(95)).append("\n");
-
-        // 2. Loop through calculated items and safely map them into matching aligned plain-text spaces
-        for (TimetableDto.Response slot : slots) {
-            table.append(String.format("%-12d | %-12s | %-25s | %-10s | %-10s | %-10s | %-8s\n",
-                    slot.getTimetableId(),
-                    slot.getCourseCode(),
-                    slot.getCourseName(),
-                    slot.getDayOfWeek(),
-                    slot.getStartTime().toString(),
-                    slot.getEndTime().toString(),
-                    slot.getVenue()));
-        }
-
         // Log trace at successful response point
         log.info("Successfully processed getStudentSchedule endpoint request for studentId: {}", studentId);
-        return ResponseEntity.ok(table.toString());
+        return ResponseEntity.ok(ApiResponse.success(slots, "Fetched student timetable schedule."));
     }
 }

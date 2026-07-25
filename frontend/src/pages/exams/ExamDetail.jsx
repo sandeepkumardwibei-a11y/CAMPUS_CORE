@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, RefreshCw, Plus, Trash2, Save, Send } from 'lucide-react'
+import { ArrowLeft, RefreshCw, Plus, Trash2, Save, Send, CheckCircle2 } from 'lucide-react'
 import { ExamApi } from '../../lib/services'
 import { asArray } from '../../lib/hooks'
 import { apiMessage } from '../../lib/api'
@@ -20,6 +20,7 @@ export default function ExamDetail() {
   const toast = useToast()
   const { user } = useAuth()
   const canGrade = can(user?.role, 'exam.enterGrades')
+  const canMarkConducted = can(user?.role, 'exam.markConducted')
   const canPublish = can(user?.role, 'exam.publish')
   const [exam, setExam] = useState(null)
   const [grades, setGrades] = useState(null)
@@ -28,6 +29,7 @@ export default function ExamDetail() {
   const [records, setRecords] = useState([{ studentId: '', marksObtained: '' }])
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  const [marking, setMarking] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -52,6 +54,11 @@ export default function ExamDetail() {
       toast.success('Grades saved'); setRecords([{ studentId: '', marksObtained: '' }]); load()
     } catch (e) { toast.error(apiMessage(e)) } finally { setSaving(false) }
   }
+  const markConducted = async () => {
+    setMarking(true)
+    try { await ExamApi.markConducted(id); toast.success('Exam marked as conducted'); load() }
+    catch (e) { toast.error(apiMessage(e)) } finally { setMarking(false) }
+  }
   const publish = async () => {
     setPublishing(true)
     try { await ExamApi.publish(id); toast.success('Grades published'); load() }
@@ -67,7 +74,10 @@ export default function ExamDetail() {
       <PageHeader icon={FileSpreadsheet} title={`Exam #${id}`} subtitle="Enter and publish grades for this exam."
         actions={<>
           <Button variant="outline" onClick={load} loading={loading}><RefreshCw size={15} /> Refresh</Button>
-          {canPublish && <Button onClick={publish} loading={publishing}><Send size={15} /> Publish grades</Button>}
+          {canMarkConducted && exam?.status === 'SCHEDULED' && (
+            <Button variant="outline" onClick={markConducted} loading={marking}><CheckCircle2 size={15} /> Mark conducted</Button>
+          )}
+          {canPublish && <Button onClick={publish} loading={publishing} disabled={exam?.status !== 'CONDUCTED'}><Send size={15} /> Publish grades</Button>}
         </>} />
 
       {loading ? <Spinner /> : (
@@ -94,6 +104,11 @@ export default function ExamDetail() {
             {canGrade && (
             <Card className="p-6">
               <h3 className="font-display font-semibold mb-4" style={{ color: 'var(--text)' }}>Enter grades</h3>
+              {exam?.status !== 'CONDUCTED' && (
+                <p className="text-xs mb-4 rounded-lg p-3" style={{ background: 'var(--surface-2, rgba(120,120,140,0.08))', color: 'var(--text-muted)' }}>
+                  Grades can only be entered once the exam controller marks this exam as conducted.
+                </p>
+              )}
               <Field label="Faculty" className="mb-4"><FacultySelect value={facultyId} onChange={(id) => setFacultyId(id ?? '')} /></Field>
               <div className="space-y-2 mb-4">
                 <div className="flex gap-2 px-1">
@@ -110,7 +125,7 @@ export default function ExamDetail() {
                 ))}
                 <Button variant="subtle" size="sm" onClick={() => setRecords((r) => [...r, { studentId: '', marksObtained: '' }])}><Plus size={14} /> Add student</Button>
               </div>
-              <Button onClick={enterGrades} loading={saving} disabled={!facultyId}><Save size={16} /> Save grades</Button>
+              <Button onClick={enterGrades} loading={saving} disabled={!facultyId || exam?.status !== 'CONDUCTED'}><Save size={16} /> Save grades</Button>
             </Card>
             )}
 

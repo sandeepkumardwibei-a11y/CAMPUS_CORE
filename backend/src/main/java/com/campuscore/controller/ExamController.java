@@ -102,6 +102,22 @@ public class ExamController {
         return ResponseEntity.ok(ApiResponse.success(null, "Grades entered successfully"));
     }
 
+    // 🔐 SECURED: Only the exam controller (or admin) can move an exam from SCHEDULED to
+    // CONDUCTED. Faculty are deliberately excluded — grade entry and publishing both
+    // depend on this transition having happened first.
+    @PutMapping("/{examId}/conduct")
+    @PreAuthorize("hasAnyRole('ADMIN', 'EXAM_CONTROLLER')")
+    public ResponseEntity<ApiResponse<ExamDto.Response>> markExamConducted(@PathVariable Long examId) {
+        // Log trace at request entry point using safe path variable
+        log.info("Processing markExamConducted endpoint request for examId: {}", examId);
+
+        ExamDto.Response response = examService.markExamConducted(examId);
+
+        // Log trace at successful response point
+        log.info("Successfully processed markExamConducted endpoint request for examId: {}", examId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Exam marked as conducted."));
+    }
+
     @PutMapping("/{examId}/publish")
     @PreAuthorize("hasAnyRole('ADMIN', 'EXAM_CONTROLLER')")
     public ResponseEntity<ApiResponse<Void>> publishGrades(@PathVariable Long examId) {

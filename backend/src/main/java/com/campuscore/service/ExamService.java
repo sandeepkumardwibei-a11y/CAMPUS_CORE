@@ -142,6 +142,15 @@ public class ExamService {
         ExamSchedule exam = examRepository.findById(examId)
                 .orElseThrow(() -> new ResourceNotFoundException("ExamSchedule", "id", examId));
 
+        // RULE: Grades can only be entered once the exam controller has marked the
+        // exam as CONDUCTED. Faculty cannot pre-emptively grade a SCHEDULED exam.
+        if (exam.getStatus() != ExamSchedule.ExamStatus.CONDUCTED) {
+            throw new ExamException(
+                    "Grading Error: Grades can only be entered for exams marked as CONDUCTED. Current status: "
+                            + exam.getStatus() + ". Ask the exam controller to mark the exam as conducted first."
+            );
+        }
+
         User faculty = userRepository.findById(facultyId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", facultyId));
 
@@ -229,6 +238,29 @@ public class ExamService {
         log.info("Successfully completed entering grades collection iteration stack for examId: {}", examId);
     }
 
+    // 🔐 RESTRICTED: Only the exam controller (via the ExamController's role check) may
+    // move an exam from SCHEDULED to CONDUCTED. This gates both grade entry and publishing.
+    @Transactional
+    public ExamDto.Response markExamConducted(Long examId) {
+        log.info("Entering markExamConducted state transition for examId: {}", examId);
+
+        ExamSchedule exam = examRepository.findById(examId)
+                .orElseThrow(() -> new ResourceNotFoundException("ExamSchedule", "id", examId));
+
+        if (exam.getStatus() != ExamSchedule.ExamStatus.SCHEDULED) {
+            throw new ExamException(
+                    "Status Update Error: Only a SCHEDULED exam can be marked as CONDUCTED. Current status: "
+                            + exam.getStatus() + "."
+            );
+        }
+
+        exam.setStatus(ExamSchedule.ExamStatus.CONDUCTED);
+        examRepository.save(exam);
+
+        log.info("Successfully transitioned examId: {} from SCHEDULED to CONDUCTED", examId);
+        return toExamResponse(exam);
+    }
+
     @Transactional
     public void publishGrades(Long examId) {
         log.info("Entering publishGrades state migration sequence for examId: {}", examId);
@@ -236,14 +268,23 @@ public class ExamService {
         ExamSchedule exam = examRepository.findById(examId)
                 .orElseThrow(() -> new ResourceNotFoundException("ExamSchedule", "id", examId));
 
-        if (exam.getStatus() == ExamSchedule.ExamStatus.CONDUCTED) {
+        // RULE: Grades can only be published once the exam controller has marked the
+        // exam as CONDUCTED (i.e. the exam has actually taken place).
+        if (exam.getStatus() != ExamSchedule.ExamStatus.CONDUCTED) {
+            throw new ExamException(
+                    "Publishing Error: Grades can only be published for exams marked as CONDUCTED. Current status: "
+                            + exam.getStatus() + "."
+            );
+        }
+
+        List<GradeRecord> grades = gradeRepository.findByExamExamId(examId);
+        if (grades.isEmpty()) {
+            throw new ExamException("Publishing Error: No grades have been entered for this exam yet.");
+        }
+        if (grades.stream().allMatch(g -> g.getStatus() == GradeRecord.GradeStatus.PUBLISHED)) {
             throw new ExamException("Publishing Error: Grades for this exam have already been published.");
         }
 
-        exam.setStatus(ExamSchedule.ExamStatus.CONDUCTED);
-        examRepository.save(exam);
-
-        List<GradeRecord> grades = gradeRepository.findByExamExamId(examId);
         for (GradeRecord g : grades) {
             g.setStatus(GradeRecord.GradeStatus.PUBLISHED);
             gradeRepository.save(g);

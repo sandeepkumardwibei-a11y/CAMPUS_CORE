@@ -1,6 +1,6 @@
-import { useMemo, useState, Fragment } from 'react'
+import { useMemo, useState, useEffect, Fragment } from 'react'
 import { CalendarDays, Plus, Search, LayoutGrid, List } from 'lucide-react'
-import { TimetableApi, CourseApi } from '../lib/services'
+import { TimetableApi, CourseApi, ProgramApi } from '../lib/services'
 import { useAsync, asArray } from '../lib/hooks'
 import { apiMessage } from '../lib/api'
 import { useToast } from '../context/ToastContext'
@@ -12,7 +12,7 @@ import {
 } from '../components/ui'
 import { Tabs } from '../components/ui/extras'
 
-const empty = { courseId: '', dayOfWeek: 'MONDAY', startTime: '', endTime: '', venue: '', academicYear: '2026-27', semester: 3 }
+const empty = { programId: '', courseId: '', dayOfWeek: 'MONDAY', startTime: '', endTime: '', venue: '', academicYear: '2026-27', semester: 3 }
 
 // Fixed daily structure (item 11)
 const DAY_START = '08:00'
@@ -133,14 +133,30 @@ export default function Timetable() {
   const [view, setView] = useState('grid')
   const { data, loading, reload } = useAsync(() => TimetableApi.all(), [])
   const { data: coursesData } = useAsync(() => (canManage ? CourseApi.all() : Promise.resolve([])), [canManage])
+  const { data: programsData } = useAsync(() => (canManage ? ProgramApi.all() : Promise.resolve([])), [canManage])
   const courses = asArray(coursesData)
+  const programs = asArray(programsData)
   const [scoped, setScoped] = useState(null)
   const [scopeLoading, setScopeLoading] = useState(false)
   const [q, setQ] = useState({ courseId: '', studentId: '', programId: '', academicYear: '2026-27', semester: '3' })
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(empty)
   const [saving, setSaving] = useState(false)
+  const [programCourses, setProgramCourses] = useState(null)
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
+
+  // When a program is picked in the create-slot modal, narrow the Course dropdown
+  // down to only courses belonging to that program.
+  useEffect(() => {
+    let cancelled = false
+    if (!form.programId) { setProgramCourses(null); return }
+    CourseApi.byProgram(Number(form.programId)).then((res) => {
+      if (!cancelled) setProgramCourses(asArray(res))
+    }).catch(() => { if (!cancelled) setProgramCourses([]) })
+    return () => { cancelled = true }
+  }, [form.programId])
+
+  const courseOptionsForModal = form.programId ? asArray(programCourses) : courses
 
   const list = tab === 'all' ? asArray(data) : asArray(scoped)
 
@@ -237,10 +253,15 @@ export default function Timetable() {
 
       <Modal open={open} onClose={() => setOpen(false)} title="Add timetable slot">
         <div className="space-y-4">
+          <Field label="Program" hint="Choose a program to narrow the course list below">
+            <Select value={form.programId} placeholder="Select a program"
+              onChange={(e) => setForm({ ...form, programId: e.target.value, courseId: '' })}
+              options={programs.map((p) => ({ value: p.programId, label: p.programName || p.name }))} />
+          </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Course">
               <Select value={form.courseId} onChange={set('courseId')} placeholder="Select a course"
-                options={courses.map((c) => ({ value: c.courseId, label: `${c.courseName} (${c.courseCode})` }))} />
+                options={courseOptionsForModal.map((c) => ({ value: c.courseId, label: `${c.courseName} (${c.courseCode})` }))} />
             </Field>
             <Field label="Day"><Select options={DAYS} value={form.dayOfWeek} onChange={set('dayOfWeek')} /></Field>
           </div>

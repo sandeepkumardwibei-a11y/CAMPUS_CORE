@@ -431,7 +431,8 @@ CREATE TABLE IF NOT EXISTS notification (
     notification_id BIGINT       NOT NULL AUTO_INCREMENT,
     user_id         BIGINT       NOT NULL,
     message         TEXT         NOT NULL,
-    category        ENUM('ADMISSIONS','ATTENDANCE','EXAMINATION','FEE','HOSTEL','ACADEMIC','SYSTEM')
+    category        ENUM('ADMISSIONS','ATTENDANCE','EXAM','ACCOUNTS','HOSTEL','ACADEMIC','SYSTEM',
+                         'AUTH','INFO','ALERT','COURSE','DEPARTMENT','PROGRAM','REMINDER','FINANCE')
                     NOT NULL DEFAULT 'SYSTEM',
     status          ENUM('UNREAD','READ','DISMISSED') NOT NULL DEFAULT 'UNREAD',
     created_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,

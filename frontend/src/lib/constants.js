@@ -101,6 +101,7 @@ export const PERMS = {
   'exam.schedule': ['ADMIN', 'EXAM_CONTROLLER'],
   'exam.read': ['ADMIN', 'EXAM_CONTROLLER', 'FACULTY', 'STUDENT'],
   'exam.enterGrades': ['ADMIN', 'FACULTY'],
+  'exam.markConducted': ['ADMIN', 'EXAM_CONTROLLER'],
   'exam.publish': ['ADMIN', 'EXAM_CONTROLLER'],
   'exam.examGrades': ['ADMIN', 'EXAM_CONTROLLER', 'FACULTY'],
   'exam.studentGrades': ['ADMIN', 'EXAM_CONTROLLER', 'STUDENT'],
@@ -166,8 +167,8 @@ export const NAV = [
   // item 6: applicants apply; students are already enrolled, so no Admissions tab for them.
   { to: '/admissions', label: 'Admissions', icon: GraduationCap, roles: ['APPLICANT', 'ADMIN'] },
   { to: '/users', label: 'Users', icon: UserCog, roles: ['ADMIN', 'FACULTY', 'EXAM_CONTROLLER', 'ACCOUNTS'] },
-  { to: '/programs', label: 'Programs', icon: Layers, roles: 'all' },
   { to: '/departments', label: 'Departments', icon: Building2, roles: 'all' },
+  { to: '/programs', label: 'Programs', icon: Layers, roles: 'all' },
   { to: '/courses', label: 'Courses', icon: BookOpen, roles: 'all' },
   { to: '/registrations', label: 'Registrations', icon: ClipboardList, roles: ['ADMIN', 'STUDENT', 'FACULTY', 'EXAM_CONTROLLER'] },
   { to: '/exams', label: 'Exams & Grades', icon: FileSpreadsheet, roles: ['ADMIN', 'EXAM_CONTROLLER', 'FACULTY', 'STUDENT'] },

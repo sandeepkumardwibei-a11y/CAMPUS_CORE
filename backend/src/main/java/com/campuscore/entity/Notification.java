@@ -47,7 +47,7 @@ public class Notification {
 
     public enum NotificationCategory {
         ADMISSIONS, ATTENDANCE, EXAM, ACCOUNTS, HOSTEL, ACADEMIC, SYSTEM, AUTH,
-        INFO, ALERT,COURSE,DEPARTMENT, PROGRAM
+        INFO, ALERT,COURSE,DEPARTMENT, PROGRAM, REMINDER, FINANCE
     }
 
     public enum NotificationStatus { UNREAD, READ, DISMISSED }

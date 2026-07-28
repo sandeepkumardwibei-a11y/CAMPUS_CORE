@@ -11,6 +11,8 @@ import { ADMISSION_PIPELINE, can } from '../../lib/constants'
 import { useAuth } from '../../context/AuthContext'
  
 const empty = { applicantName: '', email: '', phone: '', programName: '', departmentName: '', academicYear: '2026-27', percentageSecured: '' }
+// Strips anything that isn't a digit, and caps at 10 digits.
+const onlyDigits = (v) => v.replace(/\D/g, '').slice(0, 10)
  
 export default function Admissions() {
   const toast = useToast()
@@ -95,7 +97,10 @@ export default function Admissions() {
                 <Field label="Email"><Input type="email" required value={form.email} onChange={set('email')} placeholder="grace@applicant.edu" /></Field>
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
-                <Field label="Phone"><Input value={form.phone} onChange={set('phone')} placeholder="9000000010" /></Field>
+                <Field label="Phone">
+                  <Input value={form.phone} inputMode="numeric" maxLength={10} placeholder="9000000010"
+                    onChange={(e) => setForm({ ...form, phone: onlyDigits(e.target.value) })} />
+                </Field>
                 <Field label="Academic year"><Input value={form.academicYear} onChange={set('academicYear')} placeholder="2026-27" /></Field>
               </div>
               <div className="grid sm:grid-cols-2 gap-4">

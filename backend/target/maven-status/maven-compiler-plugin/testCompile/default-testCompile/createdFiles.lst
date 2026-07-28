@@ -1,0 +1,16 @@
+com\campuscore\service\CourseServiceTest.class
+com\campuscore\service\ProgramServiceTest.class
+com\campuscore\service\DepartmentServiceTest.class
+com\campuscore\service\AuthServiceTest.class
+com\campuscore\service\TimetableServiceTest.class
+com\campuscore\service\FacilityBookingServiceTest.class
+com\campuscore\service\FileStorageServiceTest.class
+com\campuscore\service\AcademicStandingServiceTest.class
+com\campuscore\service\AttendanceServiceTest.class
+com\campuscore\service\HostelServiceTest.class
+com\campuscore\service\FeeServiceTest.class
+com\campuscore\service\HolidayCalendarTest.class
+com\campuscore\service\AdmissionServiceTest.class
+com\campuscore\service\ExamServiceTest.class
+com\campuscore\service\SemesterRegistrationServiceTest.class
+com\campuscore\service\NotificationServiceTest.class

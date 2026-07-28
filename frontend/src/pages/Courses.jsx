@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { BookOpen, Plus, Search, UserPlus, ChevronDown, X } from 'lucide-react'
-import { CourseApi, ProgramApi } from '../lib/services'
+import { CourseApi, ProgramApi, RegistrationApi } from '../lib/services'
 import { useAsync, asArray } from '../lib/hooks'
 import { apiMessage } from '../lib/api'
 import { useToast } from '../context/ToastContext'
@@ -38,7 +38,7 @@ function ProgramMultiSelect({ programs, selected, onChange }) {
           <div className="absolute z-20 mt-1 w-full max-h-56 overflow-auto rounded-xl border shadow-lg p-1"
             style={{ background: 'var(--surface, #fff)', borderColor: 'var(--border, rgba(0,0,0,0.12))' }}>
             {programs.length === 0 ? (
-              <div className="px-3 py-2 text-sm opacity-60">No programs available. Create programs first.</div>
+              <div className="px-3 py-2 text-sm opacity-60">No programs available.</div>
             ) : programs.map((p) => (
               <label key={p.programId} className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer hover:bg-black/5">
                 <input type="checkbox" checked={selected.includes(p.programId)} onChange={() => toggle(p.programId)} />
@@ -66,11 +66,60 @@ function ProgramMultiSelect({ programs, selected, onChange }) {
 export default function Courses() {
   const toast = useToast()
   const { user } = useAuth()
+  const role = user?.role
+  const isFaculty = role === 'FACULTY'
+  const isStudent = role === 'STUDENT'
   const canManage = can(user?.role, 'course.create')
   const [tab, setTab] = useState('all')
-  const { data, loading, reload } = useAsync(() => CourseApi.all(), [])
+
+  // Fixed the broken function payload here:
+  const { data, loading, reload } = useAsync(
+    () => (isFaculty ? CourseApi.byFaculty(Number(user.userId)) : CourseApi.all()),
+    [isFaculty, user?.userId]
+  )
+
+  const { data: myRegs } = useAsync(
+    () => (isStudent ? RegistrationApi.byStudent(Number(user.userId)) : Promise.resolve([])),
+    [isStudent, user?.userId]
+  )
+
+  const myCourseIds = useMemo(() => {
+    if (!isStudent) return null
+    const ids = new Set()
+    asArray(myRegs).forEach((r) => {
+      ;(r.courses || []).forEach((c) => ids.add(c.courseId))
+      ;(r.courseIds || []).forEach((id) => ids.add(id))
+    })
+    return ids
+  }, [isStudent, myRegs])
+
+  // Applied to EVERY result set so faculty and students only see matching courses
+  const scopeToSelf = (arr) => {
+    if (isStudent) return myCourseIds ? arr.filter((c) => myCourseIds.has(c.courseId)) : []
+    if (isFaculty) return arr.filter((c) => Number(c.facultyId) === Number(user.userId))
+    return arr
+  }
+
   const { data: programsData } = useAsync(() => ProgramApi.all(), [])
-  const programs = asArray(programsData)
+  const allPrograms = asArray(programsData)
+
+  const baseCourses = asArray(data)
+  
+  // Scope available programs down for faculty users based on what courses they manage
+  const facultyPrograms = useMemo(() => {
+    if (!isFaculty) return allPrograms
+    
+    const relevantProgramIds = new Set()
+    baseCourses.forEach((c) => {
+      if (Number(c.facultyId) === Number(user.userId)) {
+        if (c.programIds) c.programIds.forEach(id => relevantProgramIds.add(id))
+        if (c.programId) relevantProgramIds.add(c.programId)
+      }
+    })
+    
+    return allPrograms.filter(p => relevantProgramIds.has(p.programId))
+  }, [isFaculty, allPrograms, baseCourses, user?.userId])
+
   const [scoped, setScoped] = useState(null)
   const [scopeLoading, setScopeLoading] = useState(false)
   const [q, setQ] = useState({ programId: '', semester: '', facultyId: '' })
@@ -80,7 +129,7 @@ export default function Courses() {
   const [assign, setAssign] = useState(null) // {id, facultyId}
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
 
-  const list = tab === 'all' ? asArray(data) : asArray(scoped)
+  const list = scopeToSelf(tab === 'all' ? baseCourses : asArray(scoped))
 
   const runScope = async () => {
     setScopeLoading(true)
@@ -126,7 +175,7 @@ export default function Courses() {
       <Tabs active={tab} onChange={(t) => { setTab(t); setScoped(null) }} tabs={[
         { key: 'all', label: 'All courses' },
         { key: 'program', label: 'By program' },
-        { key: 'faculty', label: 'By faculty' },
+        ...(isFaculty ? [] : [{ key: 'faculty', label: 'By faculty' }]),
       ]} />
 
       {tab !== 'all' && (
@@ -136,7 +185,7 @@ export default function Courses() {
               <div className="w-56"><span className="label">Program</span>
                 <Select value={q.programId} onChange={(e) => setQ({ ...q, programId: e.target.value })}
                   placeholder="Select a program"
-                  options={programs.map((p) => ({ value: p.programId, label: p.programName }))} />
+                  options={facultyPrograms.map((p) => ({ value: p.programId, label: p.programName }))} />
               </div>
               <div className="w-36"><span className="label">Semester</span><Input type="number" value={q.semester} onChange={(e) => setQ({ ...q, semester: e.target.value })} placeholder="Optional" /></div>
             </>
@@ -188,7 +237,7 @@ export default function Courses() {
             <Field label="Course code"><Input value={form.courseCode} onChange={set('courseCode')} placeholder="CS201" /></Field>
           </div>
           <Field label="Programs" hint="A course can belong to multiple programs (many-to-many).">
-            <ProgramMultiSelect programs={programs} selected={form.programIds} onChange={(ids) => setForm({ ...form, programIds: ids })} />
+            <ProgramMultiSelect programs={facultyPrograms} selected={form.programIds} onChange={(ids) => setForm({ ...form, programIds: ids })} />
           </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Credits"><Input type="number" value={form.credits} onChange={set('credits')} /></Field>

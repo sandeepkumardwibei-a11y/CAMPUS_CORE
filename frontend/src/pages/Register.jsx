@@ -8,6 +8,14 @@ import { Button, Input, Field, Select } from '../components/ui'
 import { ROLES } from '../lib/constants'
 import ThemeToggle from '../components/ThemeToggle'
 
+// Strips anything that isn't a digit, and caps at 10 digits — used on every phone field.
+const onlyDigits = (v) => v.replace(/\D/g, '').slice(0, 10)
+// Mirrors the backend RegisterRequest password @Pattern: upper, lower, digit, special, 8+ chars.
+const PASSWORD_PATTERN = '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@#$%^&+=!.,_-]).{8,}$'
+// Letters, spaces, apostrophes, hyphens, and periods only — no digits or other symbols.
+const NAME_PATTERN = "^[A-Za-z][A-Za-z .'-]"
+const EMAIL_PATTERN = "^[A-Za-z][A-Za-z .'-]"
+
 export default function Register() {
   const { register } = useAuth()
   const toast = useToast()
@@ -44,15 +52,40 @@ export default function Register() {
         <p className="mt-1 mb-6 text-sm" style={{ color: 'var(--text-muted)' }}>Join the campus operating system.</p>
 
         <form onSubmit={submit} className="space-y-4" autoComplete="off">
-          <Field label="Full name"><Input required value={form.name} onChange={set('name')} placeholder="Ada Lovelace" autoComplete="off" /></Field>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Email"><Input type="email" required value={form.email} onChange={set('email')} placeholder="you@campus.edu" autoComplete="off" name="registerEmail" /></Field>
-            <Field label="Phone"><Input value={form.phone} onChange={set('phone')} placeholder="9000000000" autoComplete="off" /></Field>
+          {/* Decoy fields: invisible to the user, but Chrome/Edge's autofill heuristics latch onto
+              the FIRST matching email/password input on the page. These absorb that behavior so
+              the real fields below stay blank on load. */}
+          <div aria-hidden="true" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', opacity: 0, pointerEvents: 'none' }}>
+            <input type="text" name="fake-name" tabIndex={-1} autoComplete="off" />
+            <input type="email" name="fake-email" tabIndex={-1} autoComplete="off" />
+            <input type="password" name="fake-password" tabIndex={-1} autoComplete="new-password" />
           </div>
-          <Field label="Password"><Input type="password" required value={form.password} onChange={set('password')} placeholder="At least 6 characters" autoComplete="new-password" name="registerPassword" /></Field>
+
+          <Field label="Full name" hint="2–20 letters — spaces, hyphens, apostrophes and periods allowed">
+            <Input required minLength={2} maxLength={20} pattern={NAME_PATTERN}
+              title="2-20 letters only (spaces, hyphens, apostrophes and periods allowed) — no digits or other symbols"
+              autoComplete="off" name="register-name"
+              value={form.name} onChange={set('name')} placeholder="Ada Lovelace" />
+          </Field>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Email" hint="Enter your email address">
+              <Input type="email" required autoComplete="off" minLength={2} maxLength={20} pattern={EMAIL_PATTERN}
+                value={form.email} onChange={set('email')} placeholder="you@campus.edu" />
+            </Field>
+            <Field label="Phone" hint="Enter your phone number">
+              <Input value={form.phone} inputMode="numeric" maxLength={10} placeholder="9000000000"
+                autoComplete="off" name="register-phone"
+                onChange={(e) => setForm({ ...form, phone: onlyDigits(e.target.value) })} />
+            </Field>
+          </div>
+          <Field label="Password" hint="At least 8 characters, with uppercase, lowercase, a number, and a special character">
+            <Input type="password" required pattern={PASSWORD_PATTERN} title="At least 8 characters, including uppercase, lowercase, a number, and a special character"
+              autoComplete="new-password" name="register-password"
+              value={form.password} onChange={set('password')} placeholder="At least 8 characters" />
+          </Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Role"><Select options={ROLES} value={form.role} onChange={set('role')} /></Field>
-            <Field label="Department ID" hint="Optional"><Input type="number" value={form.departmentId} onChange={set('departmentId')} placeholder="e.g. 1" /></Field>
+            <Field label="Department ID" hint="Optional"><Input type="number" autoComplete="off" value={form.departmentId} onChange={set('departmentId')} placeholder="e.g. 1" /></Field>
           </div>
           <Button type="submit" loading={loading} className="w-full" size="lg">Create account <ArrowRight size={18} /></Button>
         </form>

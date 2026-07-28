@@ -126,9 +126,14 @@ function StaffView() {
 
   const canConfirm = can(user?.role, 'reg.confirm')
 
-  const [tab, setTab] = useState('all')
+  const canViewAll = can(user?.role, 'reg.all')
 
-  const { data, loading, reload } = useAsync(() => RegistrationApi.all(), [])
+  const [tab, setTab] = useState(canViewAll ? 'all' : 'student')
+
+  // Only hit GET /registrations (ADMIN/EXAM_CONTROLLER only) when the user is actually
+  // allowed to see it -- otherwise this fires on every page load and throws an
+  // "Access denied" toast at roles like FACULTY who can only ever use the scoped tabs.
+  const { data, loading, reload } = useAsync(() => (canViewAll ? RegistrationApi.all() : Promise.resolve([])), [canViewAll])
 
   const [scoped, setScoped] = useState(null)
 
@@ -196,7 +201,7 @@ function StaffView() {
  
       <Tabs active={tab} onChange={(t) => { setTab(t); setScoped(null); setSearched(false) }} tabs={[
 
-        { key: 'all', label: 'All' }, { key: 'student', label: 'By student' },
+        ...(canViewAll ? [{ key: 'all', label: 'All' }] : []), { key: 'student', label: 'By student' },
 
         { key: 'course', label: 'By course' }, { key: 'id', label: 'By ID' },
 

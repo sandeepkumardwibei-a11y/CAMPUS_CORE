@@ -56,6 +56,13 @@ public class AttendanceService {
         Course course = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> new AttendanceException("Invalid Course Credentials: The provided Course ID (" + request.getCourseId() + ") does not exist in our records."));
 
+        // Block marking attendance on public/Indian holidays — there are no classes on these dates.
+        if (HolidayCalendar.isHoliday(request.getLectureDate())) {
+            throw new AttendanceException("Validation Error: " + request.getLectureDate()
+                    + " is a holiday (" + HolidayCalendar.nameOf(request.getLectureDate())
+                    + "). Attendance cannot be marked on holidays.");
+        }
+
         User currentUser = getAuthenticatedUser();
         boolean isAssignedFaculty = course.getFaculty() != null && course.getFaculty().getUserId().equals(currentUser.getUserId());
         boolean isAdmin = currentUser.getRole() == User.Role.ADMIN;

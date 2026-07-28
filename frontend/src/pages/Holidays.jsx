@@ -17,6 +17,10 @@ function MonthGrid({ month }) {
   for (let i = 0; i < first; i++) cells.push(null)
   for (let d = 1; d <= days; d++) cells.push(d)
 
+  const today = new Date()
+  const isCurrentMonth = today.getFullYear() === YEAR && today.getMonth() === month
+  const todayDate = today.getDate()
+
   return (
     <div className="animate-fade-up">
       <div className="grid grid-cols-7 gap-1 mb-2">
@@ -30,18 +34,26 @@ function MonthGrid({ month }) {
           const key = `${YEAR}-${pad(month + 1)}-${pad(d)}`
           const h = HOLIDAY_MAP[key]
           const isWeekend = new Date(YEAR, month, d).getDay() % 6 === 0
+          const isToday = isCurrentMonth && d === todayDate
           return (
             <div key={i}
-              title={h ? h.name : ''}
+              title={h ? h.name : (isToday ? 'Today' : '')}
               className={`relative aspect-square rounded-xl grid place-items-center text-sm transition
-                ${h ? 'font-bold ring-1 ring-emerald-500/40 bg-emerald-500/10 hover:scale-105' : 'hover:bg-black/5 dark:hover:bg-white/5'}`}
-              style={{ color: h ? 'var(--text)' : (isWeekend ? 'var(--text-faint)' : 'var(--text-muted)') }}>
+                ${h ? 'font-bold ring-1 ring-emerald-500/40 bg-emerald-500/10 hover:scale-105' : 'hover:bg-black/5 dark:hover:bg-white/5'}
+                ${isToday && !h ? 'ring-2 ring-sky-500 bg-sky-500 font-bold shadow-md scale-105' : ''}
+                ${isToday && h ? 'ring-2 ring-sky-500 shadow-md' : ''}`}
+              style={{ color: isToday && !h ? '#fff' : (h ? 'var(--text)' : (isWeekend ? 'var(--text-faint)' : 'var(--text-muted)')) }}>
               {h ? (
                 <div className="flex flex-col items-center leading-none">
                   <span className="text-lg animate-bounce" style={{ animationDuration: '2.4s' }}>{h.icon}</span>
                   <span className="text-[10px] mt-0.5">{d}</span>
                 </div>
               ) : d}
+              {isToday && (
+                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[8px] font-bold px-1.5 py-px rounded-full bg-sky-600 text-white leading-tight tracking-wide whitespace-nowrap">
+                  TODAY
+                </span>
+              )}
             </div>
           )
         })}

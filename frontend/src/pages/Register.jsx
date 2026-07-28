@@ -13,7 +13,8 @@ const onlyDigits = (v) => v.replace(/\D/g, '').slice(0, 10)
 // Mirrors the backend RegisterRequest password @Pattern: upper, lower, digit, special, 8+ chars.
 const PASSWORD_PATTERN = '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@#$%^&+=!.,_-]).{8,}$'
 // Letters, spaces, apostrophes, hyphens, and periods only — no digits or other symbols.
-const NAME_PATTERN = "^[A-Za-z][A-Za-z .'-]{1,19}$"
+const NAME_PATTERN = "^[A-Za-z][A-Za-z .'-]"
+const EMAIL_PATTERN = "^[A-Za-z][A-Za-z .'-]"
 
 export default function Register() {
   const { register } = useAuth()
@@ -27,21 +28,7 @@ export default function Register() {
     e.preventDefault()
     setLoading(true)
     try {
-      const payload = { ...form }
-
-      // Convert to number if typed, otherwise completely remove the key 
-      // so the backend doesn't try to parse an empty string "" or null.
-      if (payload.departmentId && payload.role !== 'APPLICANT') {
-        payload.departmentId = Number(payload.departmentId)
-      } else {
-        delete payload.departmentId
-      }
-
-      // If phone is empty, remove it to prevent blank-string validation failures
-      if (!payload.phone) {
-        delete payload.phone
-      }
-
+      const payload = { ...form, departmentId: form.departmentId ? Number(form.departmentId) : null }
       const u = await register(payload)
       toast.success(`Account created — welcome, ${u.name}`)
       navigate('/dashboard', { replace: true })
@@ -65,7 +52,9 @@ export default function Register() {
         <p className="mt-1 mb-6 text-sm" style={{ color: 'var(--text-muted)' }}>Join the campus operating system.</p>
 
         <form onSubmit={submit} className="space-y-4" autoComplete="off">
-          {/* Decoy fields to block browser autofill interference */}
+          {/* Decoy fields: invisible to the user, but Chrome/Edge's autofill heuristics latch onto
+              the FIRST matching email/password input on the page. These absorb that behavior so
+              the real fields below stay blank on load. */}
           <div aria-hidden="true" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', opacity: 0, pointerEvents: 'none' }}>
             <input type="text" name="fake-name" tabIndex={-1} autoComplete="off" />
             <input type="email" name="fake-email" tabIndex={-1} autoComplete="off" />
@@ -80,7 +69,7 @@ export default function Register() {
           </Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Email" hint="Enter your email address">
-              <Input type="email" required autoComplete="off" minLength={2} maxLength={50}
+              <Input type="email" required autoComplete="off" minLength={2} maxLength={20} pattern={EMAIL_PATTERN}
                 value={form.email} onChange={set('email')} placeholder="you@campus.edu" />
             </Field>
             <Field label="Phone" hint="Enter your phone number">
@@ -96,21 +85,7 @@ export default function Register() {
           </Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Role"><Select options={ROLES} value={form.role} onChange={set('role')} /></Field>
-            
-            <Field 
-              label="Department ID" 
-              hint={form.role === 'APPLICANT' ? 'Not required for Applicants' : 'Required for Faculty/Students'}
-            >
-              <Input 
-                type="number" 
-                autoComplete="off" 
-                disabled={form.role === 'APPLICANT'}
-                required={form.role !== 'APPLICANT'} // HTML5 client-side validation fallback
-                value={form.role === 'APPLICANT' ? '' : form.departmentId} 
-                onChange={set('departmentId')} 
-                placeholder={form.role === 'APPLICANT' ? 'N/A' : 'e.g. 1'} 
-              />
-            </Field>
+            <Field label="Department ID" hint="Optional"><Input type="number" autoComplete="off" value={form.departmentId} onChange={set('departmentId')} placeholder="e.g. 1" /></Field>
           </div>
           <Button type="submit" loading={loading} className="w-full" size="lg">Create account <ArrowRight size={18} /></Button>
         </form>

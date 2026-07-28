@@ -47,7 +47,7 @@ public class SemesterRegistrationController {
     }
 
     @GetMapping("/student/{studentId}")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'STUDENT', 'ROLE_STUDENT')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'EXAM_CONTROLLER', 'ROLE_EXAM_CONTROLLER')")
     public ResponseEntity<ApiResponse<List<SemesterRegistrationDto.Response>>> getByStudent(@PathVariable Long studentId) {
         // Log trace at request entry point using safe path variable
         log.info("Processing getByStudent endpoint request for studentId: {}", studentId);

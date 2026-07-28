@@ -60,6 +60,8 @@ export default function Layout() {
       <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
         {nav
           .filter(({ to }) => !(user?.role === 'FACULTY' && to === '/registrations'))
+          // Cleanly filters out Departments, Programs, and Courses if the user is a HOSTEL_ADMIN
+          .filter(({ to }) => !(user?.role === 'HOSTEL_ADMIN' && ['/departments', '/programs', '/courses'].includes(to)))
           .map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} end={to === '/'}
               className={({ isActive }) =>

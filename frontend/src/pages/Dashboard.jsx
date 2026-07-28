@@ -61,7 +61,12 @@ export default function Dashboard() {
     }
   }, [user?.userId, user?.role])
 
-  const quick = navForRole(user?.role).filter((n) => n.to !== '/').slice(0, 8)
+  // Filter out the registration route specifically if the logged-in user is FACULTY
+  const quick = navForRole(user?.role)
+    .filter((n) => n.to !== '/')
+    .filter((n) => !(user?.role === 'FACULTY' && n.to === '/registrations'))
+    .slice(0, 8)
+
   const hour = new Date().getHours()
   const greet = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
 

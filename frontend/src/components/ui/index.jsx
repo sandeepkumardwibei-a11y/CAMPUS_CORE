@@ -44,7 +44,20 @@ export function Field({ label, children, hint, className = '' }) {
   )
 }
 
-export function Input({ className = '', ...props }) { return <input className={`field ${className}`.trim()} {...props} /> }
+export function Input({ className = '', type, ...props }) {
+  // Default length constraints, applied only when the page didn't already set its own
+  // (an explicit prop always wins because it's spread after these defaults).
+  // - Generic text/email fields: 3-50 characters.
+  // - Password fields: 8-50 characters.
+  // Number/date/etc. inputs are left untouched — a blanket 3-50 "length" doesn't make sense
+  // for things like fee amounts, marks, credits, or percentages, and would wrongly reject valid values.
+  let lengthDefaults = {}
+  if (type === 'password') lengthDefaults = { minLength: 8, maxLength: 50 }
+  else if (type === undefined || type === 'text' || type === 'email' || type === 'tel' || type === 'search') {
+    lengthDefaults = { minLength: 3, maxLength: 50 }
+  }
+  return <input type={type} className={`field ${className}`.trim()} {...lengthDefaults} {...props} />
+}
 export function Textarea({ className = '', ...props }) { return <textarea className={`field ${className}`.trim()} rows={3} {...props} /> }
 export function Select({ options = [], placeholder, children, className = '', ...props }) {
   return (

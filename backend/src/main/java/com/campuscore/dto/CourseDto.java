@@ -1,5 +1,7 @@
 package com.campuscore.dto;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -20,12 +22,16 @@ public class CourseDto {
         private String courseCode;
 
         @NotNull(message = "Credits are required")
+        @Min(value = 1, message = "Credits must be between 1 and 8")
+        @Max(value = 8, message = "Credits must be between 1 and 8")
         private Integer credits;
 
         // MANY-TO-MANY: one or more programs this course belongs to (selected as
         // a dropdown of registered program names on the frontend).
         private List<Long> programIds;
 
+        @Min(value = 1, message = "Semester must be between 1 and 8")
+        @Max(value = 8, message = "Semester must be between 1 and 8")
         private Integer semester;
         private Long facultyId;
         private Integer maxEnrollment;

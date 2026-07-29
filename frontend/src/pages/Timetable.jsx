@@ -218,10 +218,10 @@ export default function Timetable() {
             </div>
           ) : (
             <>
-              <div className="w-32"><span className="label">Student ID</span><Input type="number" value={q.studentId} onChange={(e) => setQ({ ...q, studentId: e.target.value })} placeholder="5" /></div>
-              <div className="w-32"><span className="label">Program ID</span><Input type="number" value={q.programId} onChange={(e) => setQ({ ...q, programId: e.target.value })} placeholder="1" /></div>
+              <div className="w-32"><span className="label">Student ID</span><Input type="number" min={1} max={999999} value={q.studentId} onChange={(e) => setQ({ ...q, studentId: e.target.value })} placeholder="5" /></div>
+              <div className="w-32"><span className="label">Program ID</span><Input type="number" min={1} max={999999} value={q.programId} onChange={(e) => setQ({ ...q, programId: e.target.value })} placeholder="1" /></div>
               <div className="w-32"><span className="label">Year</span><Input value={q.academicYear} onChange={(e) => setQ({ ...q, academicYear: e.target.value })} placeholder="2026-27" /></div>
-              <div className="w-24"><span className="label">Sem</span><Input type="number" value={q.semester} onChange={(e) => setQ({ ...q, semester: e.target.value })} placeholder="3" /></div>
+              <div className="w-24"><span className="label">Sem</span><Input type="number" min={1} max={8} value={q.semester} onChange={(e) => setQ({ ...q, semester: e.target.value })} placeholder="3" /></div>
             </>
           )}
           <Button onClick={runScope} loading={scopeLoading}><Search size={16} /> Search</Button>
@@ -275,7 +275,7 @@ export default function Timetable() {
           <Field label="Venue"><Input value={form.venue} onChange={set('venue')} placeholder="Room 101" /></Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Academic year"><Input value={form.academicYear} onChange={set('academicYear')} /></Field>
-            <Field label="Semester"><Input type="number" value={form.semester} onChange={set('semester')} /></Field>
+            <Field label="Semester"><Input type="number" min={1} max={8} value={form.semester} onChange={set('semester')} /></Field>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>

@@ -139,7 +139,7 @@ function Applications({ toast, role }) {
           <Card className="p-6">
             <h3 className="font-display font-semibold mb-4" style={{ color: 'var(--text)' }}>Apply for hostel</h3>
             <div className="space-y-4">
-              <Field label="Student ID"><Input type="number" value={apply.studentId} onChange={(e) => setApply({ ...apply, studentId: e.target.value })} placeholder="5" /></Field>
+              <Field label="Student ID"><Input type="number" min={1} max={999999} value={apply.studentId} onChange={(e) => setApply({ ...apply, studentId: e.target.value })} placeholder="5" /></Field>
               <Field label="Room type"><Select options={ROOM_TYPES} value={apply.roomType} onChange={(e) => setApply({ ...apply, roomType: e.target.value })} /></Field>
               <Field label="Reason"><Input value={apply.reason} onChange={(e) => setApply({ ...apply, reason: e.target.value })} placeholder="Home is too far from campus" /></Field>
               <Button onClick={doApply} loading={applying}><Plus size={16} /> Submit application</Button>
@@ -149,7 +149,7 @@ function Applications({ toast, role }) {
         {canPay && (
           <Card className="p-6">
             <h3 className="font-display font-semibold mb-4" style={{ color: 'var(--text)' }}>Pay hostel fee</h3>
-            <Field label="Application ID"><Input type="number" value={appId} onChange={(e) => setAppId(e.target.value)} placeholder="1" /></Field>
+            <Field label="Application ID"><Input type="number" min={1} max={999999} value={appId} onChange={(e) => setAppId(e.target.value)} placeholder="1" /></Field>
             <Button className="mt-4" onClick={() => { if (!appId) return toast.error('Enter an application ID'); setPayOpen(true) }}><IndianRupee size={15} /> Make payment</Button>
           </Card>
         )}
@@ -394,8 +394,8 @@ function Allotments({ toast, role }) {
             <h3 className="font-display font-semibold mb-4" style={{ color: 'var(--text)' }}>Allot room</h3>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Student ID"><Input type="number" value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })} placeholder="5" /></Field>
-                <Field label="Room ID"><Input type="number" value={form.roomId} onChange={(e) => setForm({ ...form, roomId: e.target.value })} placeholder="1" /></Field>
+                <Field label="Student ID"><Input type="number" min={1} max={999999} value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })} placeholder="5" /></Field>
+                <Field label="Room ID"><Input type="number" min={1} max={999999} value={form.roomId} onChange={(e) => setForm({ ...form, roomId: e.target.value })} placeholder="1" /></Field>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Academic year"><Input value={form.academicYear} onChange={(e) => setForm({ ...form, academicYear: e.target.value })} /></Field>
@@ -409,7 +409,7 @@ function Allotments({ toast, role }) {
           <Card className="p-6">
             <h3 className="font-display font-semibold mb-4" style={{ color: 'var(--text)' }}>My allotments</h3>
             <div className="flex items-end gap-3 mb-4">
-              <div className="flex-1"><span className="label">Student ID</span><Input type="number" value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="5" /></div>
+              <div className="flex-1"><span className="label">Student ID</span><Input type="number" min={1} max={999999} value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="5" /></div>
               <Button onClick={searchByStudent} loading={searching}><Search size={16} /> Load</Button>
             </div>
             {searching ? <Spinner /> : !searchData ? <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Enter a student ID to see their allotment history.</p>

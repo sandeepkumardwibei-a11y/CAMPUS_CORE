@@ -74,7 +74,7 @@ export default function Notifications() {
         </>} />
 
       <Card className="p-4 mb-5 flex flex-wrap items-end gap-3">
-        <div className="w-40"><span className="label">User ID</span><Input type="number" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="5" /></div>
+        <div className="w-40"><span className="label">User ID</span><Input type="number" min={1} max={999999} value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="5" /></div>
         <Button onClick={() => load()} loading={loading}><Search size={16} /> Load</Button>
         {unread != null && <span className="ml-auto text-sm" style={{ color: 'var(--text-muted)' }}>Unread: <span className="font-semibold text-emerald-400">{unread}</span></span>}
       </Card>
@@ -111,7 +111,7 @@ export default function Notifications() {
       <Modal open={sendOpen} onClose={() => setSendOpen(false)} title="Send notification">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Recipient user ID"><Input type="number" value={form.userId} onChange={(e) => setForm({ ...form, userId: e.target.value })} placeholder="5" /></Field>
+            <Field label="Recipient user ID"><Input type="number" min={1} max={999999} value={form.userId} onChange={(e) => setForm({ ...form, userId: e.target.value })} placeholder="5" /></Field>
             <Field label="Category"><Select options={NOTIF_CATEGORIES} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></Field>
           </div>
           <Field label="Message"><Input value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="Welcome to CampusCore!" /></Field>

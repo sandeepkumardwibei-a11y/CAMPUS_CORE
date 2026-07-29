@@ -215,6 +215,27 @@ public class ExamService {
                 );
             }
 
+            //  RULE 3: Marks obtained must be within [0, exam.maxMarks] — never negative,
+            //  never above the paper's maximum.
+            if (req.getMarksObtained() == null) {
+                throw new ExamException(
+                        "Grading Error: Marks are required for student '" + student.getName() + "' (ID: " + student.getUserId() + ")."
+                );
+            }
+            if (req.getMarksObtained().compareTo(BigDecimal.ZERO) < 0) {
+                throw new ExamException(
+                        "Grading Error: Marks obtained for student '" + student.getName() + "' (ID: " + student.getUserId() +
+                                ") cannot be negative (got " + req.getMarksObtained() + ")."
+                );
+            }
+            if (req.getMarksObtained().compareTo(exam.getMaxMarks()) > 0) {
+                throw new ExamException(
+                        "Grading Error: Marks obtained for student '" + student.getName() + "' (ID: " + student.getUserId() +
+                                ") is " + req.getMarksObtained() + ", which exceeds the maximum marks of " + exam.getMaxMarks() +
+                                " for this exam."
+                );
+            }
+
             Optional<GradeRecord> existing = gradeRepository.findByExamExamIdAndStudentUserId(examId, student.getUserId());
             GradeRecord gradeRec;
             if (existing.isPresent()) {

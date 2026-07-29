@@ -104,6 +104,13 @@ public class SemesterRegistrationService {
             throw new SemesterRegistrationException("Registration Error: Provided User ID does not belong to a student account.");
         }
 
+        //  RULE: Semester must be within the valid 1-8 range.
+        if (request.getSemester() == null || request.getSemester() < 1 || request.getSemester() > 8) {
+            throw new SemesterRegistrationException(
+                    "Registration Error: Semester must be between 1 and 8 (got " + request.getSemester() + ")."
+            );
+        }
+
         //  Security Boundary Check — student may only register for themselves
         verifyStudentRegisteringForSelf(request.getStudentId());
 

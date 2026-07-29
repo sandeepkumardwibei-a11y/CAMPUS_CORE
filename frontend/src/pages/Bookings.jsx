@@ -66,7 +66,7 @@ export default function Bookings() {
 
       {tab === 'user' && (
         <Card className="p-4 mb-5 flex items-end gap-3">
-          <div className="w-40"><span className="label">User ID</span><Input type="number" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="5" /></div>
+          <div className="w-40"><span className="label">User ID</span><Input type="number" min={1} max={999999} value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="5" /></div>
           <Button onClick={loadByUser} loading={scopeLoading}><Search size={16} /> Load</Button>
         </Card>
       )}
@@ -103,7 +103,7 @@ export default function Bookings() {
       <Modal open={open} onClose={() => setOpen(false)} title="Book a facility">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Field label="User ID"><Input type="number" value={form.userId} onChange={set('userId')} placeholder="5" /></Field>
+            <Field label="User ID"><Input type="number" min={1} max={999999} value={form.userId} onChange={set('userId')} placeholder="5" /></Field>
             <Field label="Facility name"><Input value={form.facilityName} onChange={set('facilityName')} placeholder="Seminar Hall B" /></Field>
           </div>
           <div className="grid grid-cols-3 gap-4">

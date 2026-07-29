@@ -128,6 +128,8 @@ export default function Admissions() {
           <Field label="Application ID">
             <Input
               type="number"
+              min={1}
+              max={999999}
               value={lookupId}
               onChange={(e) => setLookupId(e.target.value)}
               placeholder="1"

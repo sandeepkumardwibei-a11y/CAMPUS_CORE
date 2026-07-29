@@ -1,5 +1,7 @@
 package com.campuscore.dto;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -16,7 +18,8 @@ public class ExamDto {
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class CreateRequest {
         @NotNull private Long courseId;
-        @NotNull private Integer semester;
+        @NotNull @Min(value = 1, message = "Semester must be between 1 and 8") @Max(value = 8, message = "Semester must be between 1 and 8")
+        private Integer semester;
         @NotBlank private String academicYear;
         @NotBlank private String examType;
         @NotNull private LocalDate examDate;

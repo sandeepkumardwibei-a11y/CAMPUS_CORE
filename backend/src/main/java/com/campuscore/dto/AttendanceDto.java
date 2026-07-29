@@ -3,6 +3,7 @@ package com.campuscore.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -27,7 +28,9 @@ public class AttendanceDto {
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class StudentAttendance {
-        @NotNull private Long studentId;
+        @NotNull 
+        @Size(min=1, max=1)
+        private Long studentId;
         @NotBlank private String status; // PRESENT / ABSENT / LATE / OFFICIAL_DUTY
     }
 

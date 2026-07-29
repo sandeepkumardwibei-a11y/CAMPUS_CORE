@@ -13,8 +13,7 @@ const onlyDigits = (v) => v.replace(/\D/g, '').slice(0, 10)
 // Mirrors the backend RegisterRequest password @Pattern: upper, lower, digit, special, 8+ chars.
 const PASSWORD_PATTERN = '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@#$%^&+=!.,_-]).{8,}$'
 // Letters, spaces, apostrophes, hyphens, and periods only — no digits or other symbols.
-const NAME_PATTERN = "^[A-Za-z][A-Za-z .'-]"
-const EMAIL_PATTERN = "^[A-Za-z][A-Za-z .'-]"
+const NAME_PATTERN = "^[A-Za-z][A-Za-z .'-]{1,99}$"
 
 export default function Register() {
   const { register } = useAuth()
@@ -61,18 +60,18 @@ export default function Register() {
             <input type="password" name="fake-password" tabIndex={-1} autoComplete="new-password" />
           </div>
 
-          <Field label="Full name" hint="2–20 letters — spaces, hyphens, apostrophes and periods allowed">
-            <Input required minLength={2} maxLength={20} pattern={NAME_PATTERN}
-              title="2-20 letters only (spaces, hyphens, apostrophes and periods allowed) — no digits or other symbols"
+          <Field label="Full name" hint="3–50 letters — spaces, hyphens, and apostrophes allowed">
+            <Input required minLength={3} maxLength={50} pattern={NAME_PATTERN}
+              title="3-50 letters only (spaces, hyphens, apostrophes and periods allowed) — no digits or other symbols"
               autoComplete="off" name="register-name"
               value={form.name} onChange={set('name')} placeholder="Ada Lovelace" />
           </Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Email" hint="Enter your email address">
-              <Input type="email" required autoComplete="off" minLength={2} maxLength={20} pattern={EMAIL_PATTERN}
+            <Field label="Email">
+              <Input type="email" required autoComplete="off" name="register-email"
                 value={form.email} onChange={set('email')} placeholder="you@campus.edu" />
             </Field>
-            <Field label="Phone" hint="Enter your phone number">
+            <Field label="Phone">
               <Input value={form.phone} inputMode="numeric" maxLength={10} placeholder="9000000000"
                 autoComplete="off" name="register-phone"
                 onChange={(e) => setForm({ ...form, phone: onlyDigits(e.target.value) })} />
@@ -85,7 +84,7 @@ export default function Register() {
           </Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Role"><Select options={ROLES} value={form.role} onChange={set('role')} /></Field>
-            <Field label="Department ID" hint="Optional"><Input type="number" autoComplete="off" value={form.departmentId} onChange={set('departmentId')} placeholder="e.g. 1" /></Field>
+            <Field label="Department ID" hint="Optional"><Input type="number" min={1} max={999999} autoComplete="off" value={form.departmentId} onChange={set('departmentId')} placeholder="e.g. 1" /></Field>
           </div>
           <Button type="submit" loading={loading} className="w-full" size="lg">Create account <ArrowRight size={18} /></Button>
         </form>

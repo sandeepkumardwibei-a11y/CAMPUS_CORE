@@ -47,9 +47,17 @@ export default function ExamDetail() {
   const upd = (i, k, v) => setRecords((r) => r.map((x, idx) => (idx === i ? { ...x, [k]: v } : x)))
 
   const enterGrades = async () => {
+    const recs = records.filter((r) => r.studentId).map((r) => ({ studentId: Number(r.studentId), marksObtained: Number(r.marksObtained) }))
+    const maxMarks = exam?.maxMarks != null ? Number(exam.maxMarks) : null
+    const invalid = recs.find((r) => Number.isNaN(r.marksObtained) || r.marksObtained < 0 || (maxMarks != null && r.marksObtained > maxMarks))
+    if (invalid) {
+      toast.error(maxMarks != null
+        ? `Marks must be between 0 and ${maxMarks} (max marks for this exam).`
+        : 'Marks must be 0 or greater.')
+      return
+    }
     setSaving(true)
     try {
-      const recs = records.filter((r) => r.studentId).map((r) => ({ studentId: Number(r.studentId), marksObtained: Number(r.marksObtained) }))
       await ExamApi.enterGrades(id, Number(facultyId), recs)
       toast.success('Grades saved'); setRecords([{ studentId: '', marksObtained: '' }]); load()
     } catch (e) { toast.error(apiMessage(e)) } finally { setSaving(false) }
@@ -118,8 +126,8 @@ export default function ExamDetail() {
                 </div>
                 {records.map((r, i) => (
                   <div key={i} className="flex gap-2 items-center">
-                    <input type="number" className="field flex-2 min-w-5" value={r.studentId} onChange={(e) => upd(i, 'studentId', e.target.value)}  />
-                    <input type="number" className="field w-28 shrink-10" value={r.marksObtained} onChange={(e) => upd(i, 'marksObtained', e.target.value)} placeholder="Marks" />
+                    <input type="number" min={1} max={999999} className="field flex-2 min-w-5" value={r.studentId} onChange={(e) => upd(i, 'studentId', e.target.value)}  />
+                    <input type="number" min={0} max={exam?.maxMarks ?? undefined} step="0.01" className="field w-28 shrink-10" value={r.marksObtained} onChange={(e) => upd(i, 'marksObtained', e.target.value)} placeholder={exam?.maxMarks != null ? `0–${exam.maxMarks}` : 'Marks'} />
                     <button onClick={() => setRecords((rs) => rs.filter((_, idx) => idx !== i))} className="p-2 rounded-lg hover:bg-rose-500/10 text-rose-500 shrink-0"><Trash2 size={16} /></button>
                   </div>
                 ))}

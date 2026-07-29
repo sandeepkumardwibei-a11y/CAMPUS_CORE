@@ -103,7 +103,7 @@ function ExamList({ toast }) {
           ? <div className="w-56"><span className="label">Course</span>
               <Select value={q.courseId} onChange={(e) => setQ({ ...q, courseId: e.target.value })} placeholder="Select a course"
                 options={courses.map((c) => ({ value: c.courseId, label: `${c.courseName} (${c.courseCode})` }))} /></div>
-          : <div className="w-28"><span className="label">Semester</span><Input type="number" value={q.semester} onChange={(e) => setQ({ ...q, semester: e.target.value })} placeholder="3" /></div>}
+          : <div className="w-28"><span className="label">Semester</span><Input type="number" min={1} max={8} value={q.semester} onChange={(e) => setQ({ ...q, semester: e.target.value })} placeholder="3" /></div>}
         <div className="w-36"><span className="label">Academic year</span><Input value={q.academicYear} onChange={(e) => setQ({ ...q, academicYear: e.target.value })} placeholder="2026-27" /></div>
         <Button onClick={load} loading={loading}><Search size={16} /> Load exams</Button>
       </Card>
@@ -135,7 +135,7 @@ function ExamList({ toast }) {
               <Select value={form.courseId} onChange={set('courseId')} placeholder="Select a course"
                 options={courses.map((c) => ({ value: c.courseId, label: `${c.courseName} (${c.courseCode})` }))} />
             </Field>
-            <Field label="Semester"><Input type="number" value={form.semester} onChange={set('semester')} /></Field>
+            <Field label="Semester"><Input type="number" min={1} max={8} value={form.semester} onChange={set('semester')} /></Field>
             <Field label="Academic year"><Input value={form.academicYear} onChange={set('academicYear')} /></Field>
           </div>
           <div className="grid grid-cols-3 gap-4">
@@ -193,11 +193,11 @@ function StudentResults({ toast }) {
   return (
     <>
       <Card className="p-4 mb-5 flex flex-wrap items-end gap-3">
-        <div className="w-40"><span className="label">Student ID</span><Input type="number" value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="5" /></div>
+        <div className="w-40"><span className="label">Student ID</span><Input type="number" min={1} max={999999} value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="5" /></div>
         <Button onClick={load} loading={loading}><Search size={16} /> Load</Button>
         <div className="flex-1" />
         <div className="w-28"><span className="label">Year</span><Input value={compile.academicYear} onChange={(e) => setCompile({ ...compile, academicYear: e.target.value })} /></div>
-        <div className="w-20"><span className="label">Sem</span><Input type="number" value={compile.semester} onChange={(e) => setCompile({ ...compile, semester: e.target.value })} /></div>
+        <div className="w-20"><span className="label">Sem</span><Input type="number" min={1} max={8} value={compile.semester} onChange={(e) => setCompile({ ...compile, semester: e.target.value })} /></div>
         <Button variant="subtle" onClick={doCompile} disabled={!studentId}><Calculator size={16} /> Compile result</Button>
       </Card>
 
@@ -238,7 +238,7 @@ function StudentResults({ toast }) {
         <div>
           <span className="label">Confirm a semester registration (exam eligibility)</span>
           <div className="flex items-end gap-3">
-            <div className="w-40"><Input type="number" value={regId} onChange={(e) => setRegId(e.target.value)} placeholder="Registration ID" /></div>
+            <div className="w-40"><Input type="number" min={1} max={999999} value={regId} onChange={(e) => setRegId(e.target.value)} placeholder="Registration ID" /></div>
             <Button variant="subtle" onClick={confirmReg} disabled={!regId}><CheckCheck size={16} /> Confirm registration</Button>
           </div>
         </div>

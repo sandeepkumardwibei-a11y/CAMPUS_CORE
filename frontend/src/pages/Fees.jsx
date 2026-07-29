@@ -109,7 +109,7 @@ export default function Fees() {
               <div className="w-44"><span className="label">Invoice status</span><Select options={INVOICE_STATUS} value={status} onChange={(e) => setStatus(e.target.value)} /></div>
               <Button onClick={loadStatus} loading={loading}><Search size={16} /> Load invoices</Button>
             </> : <>
-              <div className="w-40"><span className="label">Student ID</span><Input type="number" value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="5" /></div>
+              <div className="w-40"><span className="label">Student ID</span><Input type="number" min={1} max={999999} value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="5" /></div>
               <Button onClick={loadStudent} loading={loading}><Search size={16} /> Load invoices</Button>
             </>}
           </Card>
@@ -148,9 +148,9 @@ export default function Fees() {
       <Modal open={invModal} onClose={() => setInvModal(false)} title="Generate invoice" size="lg">
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
-            <Field label="Student ID"><Input type="number" value={inv.studentId} onChange={(e) => setInv({ ...inv, studentId: e.target.value })} placeholder="5" /></Field>
+            <Field label="Student ID"><Input type="number" min={1} max={999999} value={inv.studentId} onChange={(e) => setInv({ ...inv, studentId: e.target.value })} placeholder="5" /></Field>
             <Field label="Academic year"><Input value={inv.academicYear} onChange={(e) => setInv({ ...inv, academicYear: e.target.value })} /></Field>
-            <Field label="Semester"><Input type="number" value={inv.semester} onChange={(e) => setInv({ ...inv, semester: e.target.value })} /></Field>
+            <Field label="Semester"><Input type="number" min={1} max={8} value={inv.semester} onChange={(e) => setInv({ ...inv, semester: e.target.value })} /></Field>
           </div>
           <div className="grid grid-cols-3 gap-4">
             {['tuitionFee', 'libraryFee', 'labFee', 'activityFee', 'scholarshipAdjusted'].map((k) => (
@@ -294,7 +294,7 @@ function PaymentModal({ open, onClose, toast, isStudent, invoice, onDone }) {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Field label="Invoice ID">
-              <Input type="number" value={invoiceId} onChange={(e) => setInvoiceId(e.target.value)} placeholder="1" disabled={!!invoice} />
+              <Input type="number" min={1} max={999999} value={invoiceId} onChange={(e) => setInvoiceId(e.target.value)} placeholder="1" disabled={!!invoice} />
             </Field>
             <Field label="Amount"><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="71000" /></Field>
           </div>

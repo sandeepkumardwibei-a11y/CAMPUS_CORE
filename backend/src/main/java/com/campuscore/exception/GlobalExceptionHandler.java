@@ -64,10 +64,16 @@ public class GlobalExceptionHandler {
             String field = ((FieldError) error).getField();
             errors.put(field, error.getDefaultMessage());
         });
+        // Build one readable message out of the actual field errors (e.g. "Credits must be
+        // between 1 and 8") instead of a generic "Validation failed" that hides the real reason.
+        String combinedMessage = errors.values().stream()
+                .filter(msg -> msg != null && !msg.isBlank())
+                .distinct()
+                .collect(java.util.stream.Collectors.joining("; "));
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(ApiResponse.<Map<String, String>>builder()
                         .success(false)
-                        .message("Validation failed")
+                        .message(combinedMessage.isBlank() ? "Validation failed" : combinedMessage)
                         .data(errors)
                         .timestamp(java.time.LocalDateTime.now())
                         .build());

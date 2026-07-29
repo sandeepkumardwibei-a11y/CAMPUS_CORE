@@ -93,6 +93,13 @@ public class TimetableService {
         //     outside those hours or overlap a break.
         validateTeachingWindow(request.getStartTime(), request.getEndTime());
 
+        // 1c. Semester must be within the valid 1-8 range (when provided).
+        if (request.getSemester() != null && (request.getSemester() < 1 || request.getSemester() > 8)) {
+            throw new TimetableException(
+                    "Validation Failed: Semester must be between 1 and 8 (got " + request.getSemester() + ")."
+            );
+        }
+
         // 2. Check if course exists
         Course course = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> {

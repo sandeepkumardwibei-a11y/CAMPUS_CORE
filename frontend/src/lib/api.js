@@ -77,9 +77,17 @@ export function unwrap(res) {
 }
 
 export function apiMessage(err, fallback = 'Something went wrong') {
+  const data = err?.response?.data
+  // Spring's @Valid failures arrive as a { field: message } map in `data.data`
+  // (e.g. { credits: "Credits must be between 1 and 8" }). Surface those directly
+  // instead of the generic "Validation failed" wrapper message.
+  if (data?.data && typeof data.data === 'object' && !Array.isArray(data.data)) {
+    const fieldMessages = [...new Set(Object.values(data.data).filter(Boolean))]
+    if (fieldMessages.length) return fieldMessages.join('; ')
+  }
   return (
-    err?.response?.data?.message ||
-    err?.response?.data?.error ||
+    data?.message ||
+    data?.error ||
     err?.message ||
     fallback
   )

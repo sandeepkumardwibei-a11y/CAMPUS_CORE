@@ -58,7 +58,7 @@ function MarkAttendance({ toast }) {
   return (
     <Card className="p-6">
       <div className="grid sm:grid-cols-2 gap-4 mb-5">
-        <Field label="Course ID"><Input type="number" value={meta.courseId} onChange={(e) => setMeta({ ...meta, courseId: e.target.value })} placeholder="1" /></Field>
+        <Field label="Course ID"><Input type="number" min={1} max={999999} value={meta.courseId} onChange={(e) => setMeta({ ...meta, courseId: e.target.value })} placeholder="1" /></Field>
         <Field label="Lecture date"><Input type="date" value={meta.lectureDate} onChange={(e) => setMeta({ ...meta, lectureDate: e.target.value })} /></Field>
       </div>
       <div className="space-y-2 mb-4">
@@ -74,6 +74,8 @@ function MarkAttendance({ toast }) {
           <div key={i} className="flex gap-3 items-center">
             <input
               type="number"
+              min={1}
+              max={999999}
               className="field flex-2 min-w-1"
               value={r.studentId}
               onChange={(e) => upd(i, 'studentId', e.target.value)}
@@ -110,7 +112,7 @@ function StudentSummary({ toast, defaultId }) {
   return (
     <>
       <Card className="p-4 mb-5 flex flex-wrap items-end gap-3">
-        <div className="w-40"><span className="label">Student ID</span><Input type="number" value={q.studentId} onChange={(e) => setQ({ ...q, studentId: e.target.value })} placeholder="5" /></div>
+        <div className="w-40"><span className="label">Student ID</span><Input type="number" min={1} max={999999} value={q.studentId} onChange={(e) => setQ({ ...q, studentId: e.target.value })} placeholder="5" /></div>
         <div className="w-40"><span className="label">Academic year</span><Input value={q.academicYear} onChange={(e) => setQ({ ...q, academicYear: e.target.value })} placeholder="2026-27" /></div>
         <Button onClick={load} loading={loading}><Search size={16} /> Load</Button>
       </Card>
@@ -145,7 +147,7 @@ function CourseShortage({ toast }) {
   return (
     <>
       <Card className="p-4 mb-5 flex items-end gap-3">
-        <div className="w-40"><span className="label">Course ID</span><Input type="number" value={courseId} onChange={(e) => setCourseId(e.target.value)} placeholder="1" /></div>
+        <div className="w-40"><span className="label">Course ID</span><Input type="number" min={1} max={999999} value={courseId} onChange={(e) => setCourseId(e.target.value)} placeholder="1" /></div>
         <Button onClick={load} loading={loading}><Search size={16} /> Load shortage list</Button>
       </Card>
       <Card className="p-4">

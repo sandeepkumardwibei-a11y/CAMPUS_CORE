@@ -43,7 +43,7 @@ export default function Layout() {
     }
   }, [user?.userId, loc.pathname])
 
-  const doLogout = () => { logout(); navigate('/login') }
+  const doLogout = () => { logout(); navigate('/', { replace: true }) }
 
   const SidebarBody = (
     <div className="flex flex-col h-full">
@@ -58,27 +58,23 @@ export default function Layout() {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
-        {nav
-          .filter(({ to }) => !(user?.role === 'FACULTY' && to === '/registrations'))
-          // Cleanly filters out Departments, Programs, and Courses if the user is a HOSTEL_ADMIN
-          .filter(({ to }) => !(user?.role === 'HOSTEL_ADMIN' && ['/departments', '/programs', '/courses'].includes(to)))
-          .map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} end={to === '/'}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition group ${
-                  isActive ? 'gradient-btn text-white shadow-md shadow-emerald-500/25' : 'hover:bg-black/5 dark:hover:bg-white/5'
-                }`
-              }
-              style={({ isActive }) => (isActive ? undefined : { color: 'var(--text-muted)' })}>
-              <Icon size={18} className="shrink-0" />
-              <span className="truncate">{label}</span>
-              {to === '/notifications' && unread > 0 && (
-                <span className="ml-auto text-[10px] font-bold bg-rose-500 text-white rounded-full min-w-[18px] h-[18px] grid place-items-center px-1">
-                  {unread > 99 ? '99+' : unread}
-                </span>
-              )}
-            </NavLink>
-          ))}
+        {nav.map(({ to, label, icon: Icon }) => (
+          <NavLink key={to} to={to} end={to === '/'}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition group ${
+                isActive ? 'gradient-btn text-white shadow-md shadow-emerald-500/25' : 'hover:bg-black/5 dark:hover:bg-white/5'
+              }`
+            }
+            style={({ isActive }) => (isActive ? undefined : { color: 'var(--text-muted)' })}>
+            <Icon size={18} className="shrink-0" />
+            <span className="truncate">{label}</span>
+            {to === '/notifications' && unread > 0 && (
+              <span className="ml-auto text-[10px] font-bold bg-rose-500 text-white rounded-full min-w-[18px] h-[18px] grid place-items-center px-1">
+                {unread > 99 ? '99+' : unread}
+              </span>
+            )}
+          </NavLink>
+        ))}
       </nav>
 
       <div className="p-3 border-t relative" style={{ borderColor: 'var(--border)' }}>

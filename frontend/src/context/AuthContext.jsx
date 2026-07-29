@@ -60,8 +60,8 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(() => {
     tokenStore.clear()
-    setUser(null)
-  }, [])
+    setUser(null) 
+  }, []) 
 
   // Persist a chosen avatar (emoji) on the local user profile, and also in the
   // durable per-user store so it survives logout and reappears after relogin.

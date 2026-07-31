@@ -44,6 +44,23 @@ public class AdmissionService {
 
     private static final List<String> ALLOWED_DOC_TYPES = List.of("TENTH", "TWELFTH", "AADHAR");
 
+    // ADMIN LIST VIEW: all applications currently in the pipeline. Once an applicant
+    // is ENROLLED, they're a student now (not an "application" awaiting action anymore),
+    // so they're excluded here.
+    public List<AdmissionDto.ListItem> getAllApplications() {
+        log.info("Entering getAllApplications execution flow for admin application list view");
+        return admissionRepository.findByStatusNot(AdmissionApplication.ApplicationStatus.ENROLLED).stream()
+                .map(a -> AdmissionDto.ListItem.builder()
+                        .applicationId(a.getApplicationId())
+                        .applicantName(a.getApplicantName())
+                        .email(a.getEmail())
+                        .programName(a.getProgramName())
+                        .status(a.getStatus() != null ? a.getStatus().name() : null)
+                        .applicationDate(a.getApplicationDate())
+                        .build())
+                .toList();
+    }
+
     // STAGE 1: SUBMIT APPLICATION (STUDENT ACTIVITY)
     @Transactional
     public AdmissionApplication submitApplication(AdmissionDto.ApplicationRequest request) {

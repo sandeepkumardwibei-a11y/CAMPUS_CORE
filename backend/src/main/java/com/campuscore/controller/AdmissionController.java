@@ -26,6 +26,22 @@ public class AdmissionController {
 
     private final AdmissionService admissionService;
 
+    // ADMIN LIST VIEW: application ID, name, and status for every application still
+    // in progress (ENROLLED applicants are excluded — see AdmissionService).
+    @GetMapping
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN')")
+    public ResponseEntity<?> getAllApplications() {
+        log.info("Processing getAllApplications endpoint request");
+        try {
+            java.util.List<AdmissionDto.ListItem> applications = admissionService.getAllApplications();
+            log.info("Successfully processed getAllApplications endpoint request");
+            return ResponseEntity.ok(applications);
+        } catch (Exception e) {
+            log.warn("Error processing getAllApplications endpoint request: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
     // STAGE 1: Candidate Entry Application Post Endpoint
     @PostMapping("/apply")
     @PreAuthorize("hasAnyAuthority('APPLICANT', 'ROLE_APPLICANT')")

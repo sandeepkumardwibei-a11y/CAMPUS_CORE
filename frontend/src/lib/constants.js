@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, GraduationCap, Users, BookOpen, Building2, Layers,
   ClipboardList, FileSpreadsheet, CalendarCheck, Wallet, BedDouble,
-  CalendarClock, Bell, CalendarDays, UserCog, Award, PartyPopper, ScrollText,
+  CalendarClock, Bell, CalendarDays, UserCog, Award, PartyPopper, ScrollText, ListChecks,
 } from 'lucide-react'
 
 // ---- Enum values (mirrors backend) ----
@@ -82,6 +82,7 @@ export const PERMS = {
   'adm.issueAdmissionLetter': ['ADMIN'],
   'adm.finalizeEnrollment': ['APPLICANT', 'STUDENT'],
   'adm.view': 'AUTH', // status / offer-details / verification-details
+  'adm.viewAll': ['ADMIN'], // bulk applications list
   // Programs
   'prog.create': ['ADMIN'],
   'prog.updateStatus': ['ADMIN'],
@@ -169,6 +170,8 @@ export const NAV = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: 'all' },
   // item 6: applicants apply; students are already enrolled, so no Admissions tab for them.
   { to: '/admissions', label: 'Admissions', icon: GraduationCap, roles: ['APPLICANT', 'ADMIN'] },
+  // NEW: admin-only bulk view of every in-progress application (ID, name, status).
+  { to: '/applications', label: 'Applications', icon: ListChecks, roles: ['ADMIN'] },
   { to: '/users', label: 'Users', icon: UserCog, roles: ['ADMIN', 'FACULTY', 'EXAM_CONTROLLER', 'ACCOUNTS'] },
   { to: '/departments', label: 'Departments', icon: Building2, roles: 'all' },
   { to: '/programs', label: 'Programs', icon: Layers, roles: 'all' },

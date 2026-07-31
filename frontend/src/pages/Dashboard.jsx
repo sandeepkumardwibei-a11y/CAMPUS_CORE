@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Layers, BookOpen, Bell, GraduationCap, Wallet, CalendarCheck,
-  BedDouble, FileSpreadsheet, ArrowUpRight, Sparkles,
+  BedDouble, FileSpreadsheet, ArrowUpRight, Sparkles, UserCog,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { ProgramApi, CourseApi, NotificationApi, HostelApi, FeeApi } from '../lib/services'
+import { ProgramApi, CourseApi, NotificationApi, HostelApi, FeeApi, UserApi } from '../lib/services'
 import { StatCard } from '../components/ui/extras'
 import { Card } from '../components/ui'
 import { navForRole, can } from '../lib/constants'
@@ -20,7 +20,7 @@ function asArrayLike(d) {
 
 export default function Dashboard() {
   const { user } = useAuth()
-  const [stats, setStats] = useState({ programs: '—', courses: '—', unread: '—', rooms: '—' })
+  const [stats, setStats] = useState({ programs: '—', courses: '—', unread: '—', rooms: '—', pendingApprovals: '—' })
 
   useEffect(() => {
     const num = (v) => (Array.isArray(v) ? v.length : (v?.length ?? v?.totalElements ?? v ?? 0))
@@ -38,6 +38,16 @@ export default function Dashboard() {
         .catch(() => {})
       if (can(user?.role, 'hostel.availableRooms')) {
         HostelApi.availableRooms().then((d) => setStats((s) => ({ ...s, rooms: num(d) }))).catch(() => {})
+      }
+      // Pending-approval count — admin only (mirrors 'users.updateStatus', the only
+      // role that can actually act on a pending account).
+      if (can(user?.role, 'users.updateStatus')) {
+        UserApi.list()
+          .then((d) => setStats((s) => ({
+            ...s,
+            pendingApprovals: asArrayLike(d).filter((u) => String(u?.status ?? '').toUpperCase() === 'PENDING').length,
+          })))
+          .catch(() => {})
       }
       if (user?.userId) {
         NotificationApi.unreadCount(user.userId)
@@ -61,12 +71,7 @@ export default function Dashboard() {
     }
   }, [user?.userId, user?.role])
 
-  // Filter out the registration route specifically if the logged-in user is FACULTY
-  const quick = navForRole(user?.role)
-    .filter((n) => n.to !== '/')
-    .filter((n) => !(user?.role === 'FACULTY' && n.to === '/registrations'))
-    .slice(0, 8)
-
+  const quick = navForRole(user?.role).filter((n) => n.to !== '/').slice(0, 8)
   const hour = new Date().getHours()
   const greet = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
 
@@ -94,6 +99,11 @@ export default function Dashboard() {
         <StatCard label="Courses offered" value={stats.courses} icon={BookOpen} tone="fuchsia" />
         {can(user?.role, 'hostel.availableRooms') && (
           <StatCard label="Rooms available" value={stats.rooms} icon={BedDouble} tone="emerald" />
+        )}
+        {can(user?.role, 'users.updateStatus') && (
+          <Link to="/users">
+            <StatCard label="Pending approvals" value={stats.pendingApprovals} icon={UserCog} tone="amber" />
+          </Link>
         )}
         <StatCard label="Unread alerts" value={stats.unread} icon={Bell} tone="amber" />
       </div>

@@ -17,4 +17,8 @@ public interface AdmissionApplicationRepository extends JpaRepository<AdmissionA
     List<AdmissionApplication> findByEmailIgnoreCase(String email);
     
     Page<AdmissionApplication> findByProgramId(Long programId, Pageable pageable);
+
+    // Used by the admin "all applications" list — enrolled applicants are no longer
+    // "applications" in progress, so they're excluded from this view.
+    List<AdmissionApplication> findByStatusNot(ApplicationStatus status);
 }

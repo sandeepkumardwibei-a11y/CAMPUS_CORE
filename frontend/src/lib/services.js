@@ -21,6 +21,7 @@ export const UserApi = {
 
 // ---------------- Admissions (13) ----------------
 export const AdmissionApi = {
+  all: () => g('/admissions'),
   apply: (body) => p('/admissions/apply', body),
   evaluate: (id, approved) => p(`/admissions/${id}/evaluate`, null, { approved }),
   issueOffer: (id, feeDetailsRef) => p(`/admissions/${id}/issue-offer`, null, { feeDetailsRef }),

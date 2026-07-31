@@ -8,6 +8,7 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Users from './pages/Users'
 import Admissions from './pages/admissions/Admissions'
+import Applications from './pages/admissions/Applications'
 import AdmissionDetail from './pages/admissions/AdmissionDetail'
 import Programs from './pages/Programs'
 import Departments from './pages/Departments'
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="users" element={<Users />} />
         <Route path="admissions" element={<Admissions />} />
+        <Route path="applications" element={<Applications />} />
         <Route path="admissions/:id" element={<AdmissionDetail />} />
         <Route path="programs" element={<Programs />} />
         <Route path="departments" element={<Departments />} />

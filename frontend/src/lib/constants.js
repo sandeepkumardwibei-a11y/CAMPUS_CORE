@@ -6,6 +6,9 @@ import {
 
 // ---- Enum values (mirrors backend) ----
 export const ROLES = ['APPLICANT', 'STUDENT', 'FACULTY', 'EXAM_CONTROLLER', 'ACCOUNTS', 'ADMIN', 'HOSTEL_ADMIN']
+// Roles selectable on the public "Create account" form. ADMIN is deliberately excluded —
+// admin accounts aren't self-service (the backend also rejects it server-side).
+export const REGISTERABLE_ROLES = ROLES.filter((r) => r !== 'ADMIN')
 export const USER_STATUS = ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'ALUMNI', 'PENDING']
 export const PROGRAM_LEVELS = ['UG', 'PG', 'PHD', 'DIPLOMA']
 export const PROGRAM_STATUS = ['ACTIVE', 'DISCONTINUED']
@@ -92,7 +95,7 @@ export const PERMS = {
   'course.read': 'AUTH',
   // Registrations
   'reg.create': ['STUDENT'],
-  'reg.byStudent': ['ADMIN', 'STUDENT'],
+  'reg.byStudent': ['ADMIN', 'STUDENT', 'FACULTY'],
   'reg.all': ['ADMIN', 'EXAM_CONTROLLER'],
   'reg.byCourse': ['ADMIN', 'FACULTY', 'EXAM_CONTROLLER'],
   'reg.byId': ['ADMIN', 'STUDENT', 'FACULTY', 'EXAM_CONTROLLER'],

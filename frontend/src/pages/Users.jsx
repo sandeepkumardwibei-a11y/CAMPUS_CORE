@@ -69,7 +69,7 @@ export default function Users() {
                   <Cell>
                     <Select className="field !py-1 !text-xs" value={u.status || ''}
                       onChange={(e) => changeStatus(u.id ?? u.userId, e.target.value)}
-                      options={USER_STATUS} placeholder="Set status…" />
+                      options={u.role === 'STUDENT' ? USER_STATUS : USER_STATUS.filter((s) => s !== 'ALUMNI')} placeholder="Set status…" />
                   </Cell>
                 )}
               </Row>

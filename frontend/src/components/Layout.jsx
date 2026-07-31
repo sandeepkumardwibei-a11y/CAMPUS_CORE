@@ -43,7 +43,7 @@ export default function Layout() {
     }
   }, [user?.userId, loc.pathname])
 
-  const doLogout = () => { logout(); navigate('/', { replace: true }) }
+  const doLogout = () => { logout(); navigate('/') }
 
   const SidebarBody = (
     <div className="flex flex-col h-full">

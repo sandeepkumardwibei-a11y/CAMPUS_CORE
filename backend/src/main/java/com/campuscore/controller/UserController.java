@@ -72,7 +72,17 @@ public class UserController {
         
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
-        user.setStatus(User.UserStatus.valueOf(status.toUpperCase()));
+
+        User.UserStatus targetStatus = User.UserStatus.valueOf(status.toUpperCase());
+
+        // RULE: ALUMNI is a student-only status — an admin cannot mark a faculty/staff account as ALUMNI.
+        if (targetStatus == User.UserStatus.ALUMNI && user.getRole() != User.Role.STUDENT) {
+            throw new com.campuscore.exception.AuthException(
+                    "Status Update Error: ALUMNI status can only be set on STUDENT accounts (this user is " + user.getRole() + ")."
+            );
+        }
+
+        user.setStatus(targetStatus);
         userRepository.save(user);
         
         // Log trace at successful response point

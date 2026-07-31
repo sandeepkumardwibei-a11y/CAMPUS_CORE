@@ -54,14 +54,16 @@ export function AuthProvider({ children }) {
   }, [persist])
 
   const register = useCallback(async (body) => {
-    const data = await AuthApi.register(body)
-    return persist(data)
-  }, [persist])
+    // New accounts start PENDING (admin approval required), and the register endpoint
+    // deliberately doesn't issue login tokens — so, unlike login, we don't persist a
+    // session here. The caller should redirect to the login page instead.
+    return AuthApi.register(body)
+  }, [])
 
   const logout = useCallback(() => {
     tokenStore.clear()
-    setUser(null) 
-  }, []) 
+    setUser(null)
+  }, [])
 
   // Persist a chosen avatar (emoji) on the local user profile, and also in the
   // durable per-user store so it survives logout and reappears after relogin.

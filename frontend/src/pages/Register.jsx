@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { apiMessage } from '../lib/api'
 import { Button, Input, Field, Select } from '../components/ui'
-import { ROLES } from '../lib/constants'
+import { REGISTERABLE_ROLES } from '../lib/constants'
 import ThemeToggle from '../components/ThemeToggle'
 
 // Strips anything that isn't a digit, and caps at 10 digits — used on every phone field.
@@ -22,15 +22,17 @@ export default function Register() {
   const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', role: 'STUDENT', departmentId: '' })
   const [loading, setLoading] = useState(false)
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
+  // Mirrors the backend rule: Department ID is mandatory only for STUDENT and FACULTY.
+  const isDeptRequired = form.role === 'STUDENT' || form.role === 'FACULTY'
 
   const submit = async (e) => {
     e.preventDefault()
     setLoading(true)
     try {
       const payload = { ...form, departmentId: form.departmentId ? Number(form.departmentId) : null }
-      const u = await register(payload)
-      toast.success(`Account created — welcome, ${u.name}`)
-      navigate('/dashboard', { replace: true })
+      await register(payload)
+      toast.success('Account created! Your account is pending admin approval — you can log in once an admin activates it.')
+      navigate('/login', { replace: true })
     } catch (err) {
       toast.error(apiMessage(err, 'Registration failed.'))
     } finally {
@@ -83,8 +85,11 @@ export default function Register() {
               value={form.password} onChange={set('password')} placeholder="At least 8 characters" />
           </Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Role"><Select options={ROLES} value={form.role} onChange={set('role')} /></Field>
-            <Field label="Department ID" hint="Optional"><Input type="number" min={1} max={999999} autoComplete="off" value={form.departmentId} onChange={set('departmentId')} placeholder="e.g. 1" /></Field>
+            <Field label="Role"><Select options={REGISTERABLE_ROLES} value={form.role} onChange={set('role')} /></Field>
+            <Field label="Department ID" hint={isDeptRequired ? 'Required for this role' : 'Optional'}>
+              <Input type="number" min={1} max={999999} required={isDeptRequired} autoComplete="off"
+                value={form.departmentId} onChange={set('departmentId')} placeholder="e.g. 1" />
+            </Field>
           </div>
           <Button type="submit" loading={loading} className="w-full" size="lg">Create account <ArrowRight size={18} /></Button>
         </form>

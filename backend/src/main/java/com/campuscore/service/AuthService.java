@@ -60,23 +60,26 @@ public class AuthService {
         }
 
         Long assignedDepartmentId = null;
-        User.UserStatus assignedStatus = User.UserStatus.ACTIVE;
+        // RULE: Every newly-created account starts PENDING regardless of role — an admin
+        // must explicitly activate it (Users page > Set status) before the person can log in.
+        User.UserStatus assignedStatus = User.UserStatus.PENDING;
 
-        if (request.getRole() == User.Role.APPLICANT) {
-            assignedDepartmentId = null;
-            assignedStatus = User.UserStatus.PENDING;
-        } else if(request.getRole() == User.Role.HOSTEL_ADMIN){
-            assignedDepartmentId = null; 
-            assignedStatus = User.UserStatus.PENDING; 
-        } else {
+        if (request.getRole() == User.Role.STUDENT || request.getRole() == User.Role.FACULTY) {
+            // RULE: Department ID is mandatory only for STUDENT and FACULTY accounts.
             if (request.getDepartmentId() == null) {
-                throw new AuthException("Department ID is strictly required for the role: " + request.getRole());
+                throw new AuthException("Department ID is required for the role: " + request.getRole());
             }
             if (!departmentRepository.existsById(request.getDepartmentId())) {
                 throw new AuthException("The department ID " + request.getDepartmentId() + " does not exist.");
             }
             assignedDepartmentId = request.getDepartmentId();
-            assignedStatus = User.UserStatus.ACTIVE;
+        } else if (request.getDepartmentId() != null) {
+            // Optional for every other role (APPLICANT, EXAM_CONTROLLER, ACCOUNTS, HOSTEL_ADMIN) —
+            // still validated if the caller chose to provide one.
+            if (!departmentRepository.existsById(request.getDepartmentId())) {
+                throw new AuthException("The department ID " + request.getDepartmentId() + " does not exist.");
+            }
+            assignedDepartmentId = request.getDepartmentId();
         }
 
         User user = User.builder()
@@ -135,6 +138,10 @@ public class AuthService {
         
         if (user.getStatus() == User.UserStatus.INACTIVE) {
             throw new AuthException("You had withdrawn the application, contact to the admin in person.");
+        }
+
+        if (user.getStatus() == User.UserStatus.PENDING) {
+            throw new AuthException("Your account is pending admin approval. Please wait for an admin to activate your account before logging in.");
         }
 
         // 2. Fall back to operational authentication processing once status safety checks clear

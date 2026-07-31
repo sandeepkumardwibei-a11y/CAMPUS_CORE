@@ -57,7 +57,7 @@ public class User implements UserDetails {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-        if (status == null) status = UserStatus.ACTIVE;
+        if (status == null) status = UserStatus.PENDING;
     }
 
     @PreUpdate

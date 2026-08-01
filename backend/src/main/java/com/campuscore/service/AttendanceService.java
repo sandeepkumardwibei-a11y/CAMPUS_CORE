@@ -46,6 +46,30 @@ public class AttendanceService {
                 .orElseThrow(() -> new AttendanceException("Access Denied: Logged-in credentials match no existing active accounts."));
     }
 
+    /**
+     * Attendance (student or faculty) may only be marked for a date that is today
+     * or earlier, and never on a Sunday or a gazetted holiday — there are no
+     * lectures/working days on those dates.
+     */
+    private void validateAttendanceDate(java.time.LocalDate date) {
+        if (date == null) {
+            throw new AttendanceException("Validation Error: Attendance date must be provided.");
+        }
+        if (date.isAfter(java.time.LocalDate.now())) {
+            throw new AttendanceException("Validation Error: " + date
+                    + " is a future date. Attendance can only be marked for today or an earlier date.");
+        }
+        if (date.getDayOfWeek() == java.time.DayOfWeek.SUNDAY) {
+            throw new AttendanceException("Validation Error: " + date
+                    + " is a Sunday. Attendance cannot be marked on Sundays.");
+        }
+        if (HolidayCalendar.isHoliday(date)) {
+            throw new AttendanceException("Validation Error: " + date
+                    + " is a holiday (" + HolidayCalendar.nameOf(date)
+                    + "). Attendance cannot be marked on holidays.");
+        }
+    }
+
     @Transactional
     public void markAttendance(AttendanceDto.MarkRequest request) {
         // Safe entry point logging
@@ -56,12 +80,8 @@ public class AttendanceService {
         Course course = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> new AttendanceException("Invalid Course Credentials: The provided Course ID (" + request.getCourseId() + ") does not exist in our records."));
 
-        // Block marking attendance on public/Indian holidays — there are no classes on these dates.
-        if (HolidayCalendar.isHoliday(request.getLectureDate())) {
-            throw new AttendanceException("Validation Error: " + request.getLectureDate()
-                    + " is a holiday (" + HolidayCalendar.nameOf(request.getLectureDate())
-                    + "). Attendance cannot be marked on holidays.");
-        }
+        // Block marking attendance on future dates, Sundays, and public/Indian holidays.
+        validateAttendanceDate(request.getLectureDate());
 
         User currentUser = getAuthenticatedUser();
         boolean isAssignedFaculty = course.getFaculty() != null && course.getFaculty().getUserId().equals(currentUser.getUserId());
@@ -172,6 +192,9 @@ public class AttendanceService {
         if (request.getFacultyName() == null || request.getFacultyName().isBlank()) {
             throw new AttendanceException("Validation Failed: Faculty name field must not be blank.");
         }
+
+        // Block marking faculty attendance on future dates, Sundays, and public/Indian holidays.
+        validateAttendanceDate(request.getDate());
 
         List<User> usersFound = userRepository.findAll().stream()
                 .filter(u -> u.getName().equalsIgnoreCase(request.getFacultyName().trim()) && u.getRole() == User.Role.FACULTY)

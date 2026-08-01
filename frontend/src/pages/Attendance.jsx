@@ -59,7 +59,7 @@ function MarkAttendance({ toast }) {
     <Card className="p-6">
       <div className="grid sm:grid-cols-2 gap-4 mb-5">
         <Field label="Course ID"><Input type="number" min={1} max={999999} value={meta.courseId} onChange={(e) => setMeta({ ...meta, courseId: e.target.value })} placeholder="1" /></Field>
-        <Field label="Lecture date"><Input type="date" value={meta.lectureDate} onChange={(e) => setMeta({ ...meta, lectureDate: e.target.value })} /></Field>
+        <Field label="Lecture date"><Input type="date" max={new Date().toISOString().slice(0, 10)} value={meta.lectureDate} onChange={(e) => setMeta({ ...meta, lectureDate: e.target.value })} /></Field>
       </div>
       <div className="space-y-2 mb-4">
         <span className="label">Student records</span>
@@ -194,7 +194,7 @@ function FacultyAttendance({ toast, canMark }) {
           <div className="space-y-4">
             <Field label="Faculty name"><FacultySelect byName value={form.facultyName} onChange={(name) => setForm({ ...form, facultyName: name })} /></Field>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Date"><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
+              <Field label="Date"><Input type="date" max={new Date().toISOString().slice(0, 10)} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
               <Field label="Status"><Select options={ATTENDANCE_STATUS} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} /></Field>
             </div>
             <Button onClick={mark} loading={saving}><Save size={16} /> Mark</Button>

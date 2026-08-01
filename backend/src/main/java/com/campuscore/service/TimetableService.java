@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -241,6 +242,52 @@ public class TimetableService {
                         "Active registration records not found. Please verify your Student ID, Program ID, Academic Year, and Semester credentials correctly."
                     );
                 });
+    }
+
+    /**
+     * 🎯 STUDENT SELF-SERVICE: Returns the logged-in student's own weekly schedule
+     * without requiring them to type their Student/Program ID, academic year or
+     * semester — those are inferred from their own (most recent, non-withdrawn)
+     * semester registration.
+     */
+    @Transactional(readOnly = true)
+    public List<TimetableDto.Response> getMyStudentSchedule() {
+        User currentUser = verifyContextAndGetAuthenticatedUser();
+        if (currentUser.getRole() != User.Role.STUDENT) {
+            throw new TimetableException("Access Denied: Only students can view their own schedule via this endpoint.");
+        }
+
+        SemesterRegistration current = registrationRepository.findByStudentUserId(currentUser.getUserId()).stream()
+                .filter(r -> r.getStatus() != SemesterRegistration.RegistrationStatus.WITHDRAWN)
+                .max(Comparator.comparing(SemesterRegistration::getAcademicYear)
+                        .thenComparing(SemesterRegistration::getSemester))
+                .orElseThrow(() -> new TimetableException(
+                        "No active semester registration found for your account. Please contact administration."));
+
+        return current.getCourses().stream()
+                .flatMap(course -> timetableRepository.findByCourse_CourseId(course.getCourseId()).stream())
+                .filter(t -> t.getAcademicYear().equalsIgnoreCase(current.getAcademicYear()) && t.getSemester().equals(current.getSemester()))
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 🎯 FACULTY SELF-SERVICE: Returns the logged-in faculty member's own teaching
+     * timetable — every scheduled slot across every course they are assigned to —
+     * without requiring them to look up and type a Course ID.
+     */
+    @Transactional(readOnly = true)
+    public List<TimetableDto.Response> getMyTeachingSchedule() {
+        User currentUser = verifyContextAndGetAuthenticatedUser();
+        if (currentUser.getRole() != User.Role.FACULTY) {
+            throw new TimetableException("Access Denied: Only faculty can view their own teaching schedule via this endpoint.");
+        }
+
+        List<Course> myCourses = courseRepository.findByFacultyUserId(currentUser.getUserId());
+        return myCourses.stream()
+                .flatMap(course -> timetableRepository.findByCourse_CourseId(course.getCourseId()).stream())
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 
     private TimetableDto.Response toResponse(Timetable t) {

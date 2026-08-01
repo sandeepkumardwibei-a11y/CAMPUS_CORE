@@ -88,4 +88,35 @@ public class TimetableController {
         log.info("Successfully processed getStudentSchedule endpoint request for studentId: {}", studentId);
         return ResponseEntity.ok(ApiResponse.success(slots, "Fetched student timetable schedule."));
     }
+
+    /**
+     * 🎯 STUDENT SELF-SERVICE: The logged-in student's own weekly schedule, with
+     * program/academic year/semester auto-detected from their registration —
+     * no need to type Student ID, Program ID, year or semester manually.
+     */
+    @GetMapping("/my-schedule")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<ApiResponse<List<TimetableDto.Response>>> getMySchedule() {
+        log.info("Processing getMySchedule endpoint request");
+
+        List<TimetableDto.Response> slots = timetableService.getMyStudentSchedule();
+
+        log.info("Successfully processed getMySchedule endpoint request");
+        return ResponseEntity.ok(ApiResponse.success(slots, "Fetched your timetable schedule."));
+    }
+
+    /**
+     * 🎯 FACULTY SELF-SERVICE: The logged-in faculty member's own teaching
+     * timetable, auto-detected from the courses assigned to them.
+     */
+    @GetMapping("/my-teaching")
+    @PreAuthorize("hasRole('FACULTY')")
+    public ResponseEntity<ApiResponse<List<TimetableDto.Response>>> getMyTeaching() {
+        log.info("Processing getMyTeaching endpoint request");
+
+        List<TimetableDto.Response> slots = timetableService.getMyTeachingSchedule();
+
+        log.info("Successfully processed getMyTeaching endpoint request");
+        return ResponseEntity.ok(ApiResponse.success(slots, "Fetched your teaching timetable."));
+    }
 }

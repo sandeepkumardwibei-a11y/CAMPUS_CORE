@@ -129,11 +129,17 @@ export default function Timetable() {
   const { user } = useAuth()
   const canManage = can(user?.role, 'tt.create')
   const canByCourse = can(user?.role, 'tt.byCourse')
-  const [tab, setTab] = useState('all')
+  const isStudent = user?.role === 'STUDENT'
+  const isFaculty = user?.role === 'FACULTY'
+  const [tab, setTab] = useState(isStudent ? 'student' : isFaculty ? 'course' : 'all')
   const [view, setView] = useState('grid')
   const { data, loading, reload } = useAsync(() => TimetableApi.all(), [])
   const { data: coursesData } = useAsync(() => (canManage ? CourseApi.all() : Promise.resolve([])), [canManage])
   const { data: programsData } = useAsync(() => (canManage ? ProgramApi.all() : Promise.resolve([])), [canManage])
+  // 🎯 Student self-service: auto-fetch the logged-in student's own schedule — no manual IDs needed.
+  const { data: myScheduleData, loading: myScheduleLoading } = useAsync(() => (isStudent ? TimetableApi.mySchedule() : Promise.resolve([])), [isStudent])
+  // 🎯 Faculty self-service: auto-fetch the logged-in faculty member's own teaching timetable.
+  const { data: myTeachingData, loading: myTeachingLoading } = useAsync(() => (isFaculty ? TimetableApi.myTeaching() : Promise.resolve([])), [isFaculty])
   const courses = asArray(coursesData)
   const programs = asArray(programsData)
   const [scoped, setScoped] = useState(null)
@@ -158,7 +164,11 @@ export default function Timetable() {
 
   const courseOptionsForModal = form.programId ? asArray(programCourses) : courses
 
-  const list = tab === 'all' ? asArray(data) : asArray(scoped)
+  const list = isStudent
+    ? asArray(myScheduleData)
+    : isFaculty
+    ? asArray(myTeachingData)
+    : (tab === 'all' ? asArray(data) : asArray(scoped))
 
   const runScope = async () => {
     setScopeLoading(true)
@@ -203,13 +213,20 @@ export default function Timetable() {
           </div>
         } />
 
-      <Tabs active={tab} onChange={(t) => { setTab(t); setScoped(null) }} tabs={[
-        { key: 'all', label: 'All slots' },
-        ...(canByCourse ? [{ key: 'course', label: 'By course' }] : []),
-        { key: 'student', label: 'Student schedule' },
-      ]} />
+      {(() => {
+        const tabList = isStudent
+          ? [{ key: 'student', label: 'Student schedule' }]
+          : isFaculty
+          ? [{ key: 'course', label: 'By course' }]
+          : [
+              { key: 'all', label: 'All slots' },
+              ...(canByCourse ? [{ key: 'course', label: 'By course' }] : []),
+              { key: 'student', label: 'Student schedule' },
+            ]
+        return tabList.length > 1 && <Tabs active={tab} onChange={(t) => { setTab(t); setScoped(null) }} tabs={tabList} />
+      })()}
 
-      {tab !== 'all' && (
+      {tab !== 'all' && !isStudent && !isFaculty && (
         <Card className="p-4 mb-5 flex flex-wrap items-end gap-3">
           {tab === 'course' ? (
             <div className="w-56"><span className="label">Course</span>
@@ -229,7 +246,7 @@ export default function Timetable() {
       )}
 
       <Card className="p-4">
-        {(loading || scopeLoading) ? <Spinner /> : list.length === 0 ? (
+        {(loading || scopeLoading || myScheduleLoading || myTeachingLoading) ? <Spinner /> : list.length === 0 ? (
           <EmptyState icon={CalendarDays} title="No timetable slots" hint="Add a slot or adjust your search." />
         ) : view === 'grid' ? (
           <GridView slots={list} />

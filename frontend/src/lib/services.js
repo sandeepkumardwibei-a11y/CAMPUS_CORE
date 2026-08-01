@@ -158,6 +158,8 @@ export const TimetableApi = {
   all: () => g('/timetable'),
   byCourse: (courseId) => g(`/timetable/course/${courseId}`),
   studentSchedule: (studentId, params) => g(`/timetable/student/${studentId}`, params),
+  mySchedule: () => g('/timetable/my-schedule'),
+  myTeaching: () => g('/timetable/my-teaching'),
 }
 
 // ---------------- Academic Standing (item 7) ----------------

@@ -44,12 +44,18 @@ public class AdmissionService {
 
     private static final List<String> ALLOWED_DOC_TYPES = List.of("TENTH", "TWELFTH", "AADHAR");
 
-    // ADMIN LIST VIEW: all applications currently in the pipeline. Once an applicant
-    // is ENROLLED, they're a student now (not an "application" awaiting action anymore),
-    // so they're excluded here.
+    // ADMIN LIST VIEW: all applications currently in the pipeline. Applications that
+    // have reached a terminal, no-longer-actionable state — enrolled, withdrawn,
+    // rejected, or revoked — are excluded from this view.
     public List<AdmissionDto.ListItem> getAllApplications() {
         log.info("Entering getAllApplications execution flow for admin application list view");
-        return admissionRepository.findByStatusNot(AdmissionApplication.ApplicationStatus.ENROLLED).stream()
+        List<AdmissionApplication.ApplicationStatus> excluded = List.of(
+                AdmissionApplication.ApplicationStatus.ENROLLED,
+                AdmissionApplication.ApplicationStatus.WITHDRAWN,
+                AdmissionApplication.ApplicationStatus.REJECTED,
+                AdmissionApplication.ApplicationStatus.REVOKED
+        );
+        return admissionRepository.findByStatusNotIn(excluded).stream()
                 .map(a -> AdmissionDto.ListItem.builder()
                         .applicationId(a.getApplicationId())
                         .applicantName(a.getApplicantName())

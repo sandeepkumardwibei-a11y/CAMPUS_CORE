@@ -20,5 +20,5 @@ public interface AdmissionApplicationRepository extends JpaRepository<AdmissionA
 
     // Used by the admin "all applications" list — enrolled applicants are no longer
     // "applications" in progress, so they're excluded from this view.
-    List<AdmissionApplication> findByStatusNot(ApplicationStatus status);
+    List<AdmissionApplication> findByStatusNotIn(List<ApplicationStatus> statuses);
 }

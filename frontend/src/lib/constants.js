@@ -182,7 +182,7 @@ export const NAV = [
   { to: '/academic-standing', label: 'Academic Standing', icon: Award, roles: ['ADMIN', 'FACULTY', 'STUDENT'] },
   { to: '/fees', label: 'Fees', icon: Wallet, roles: ['ADMIN', 'ACCOUNTS', 'STUDENT'] },
   { to: '/hostel', label: 'Hostel', icon: BedDouble, roles: ['ADMIN', 'HOSTEL_ADMIN', 'STUDENT'] },
-  { to: '/bookings', label: 'Facility Bookings', icon: CalendarClock, roles: 'all' },
+  { to: '/bookings', label: 'Facility Bookings', icon: CalendarClock, roles: ['ADMIN', 'FACULTY', 'EXAM_CONTROLLER', 'ACCOUNTS', 'HOSTEL_ADMIN', 'STUDENT'] },
   { to: '/timetable', label: 'Timetable', icon: CalendarDays, roles: ['ADMIN', 'FACULTY', 'STUDENT'] },
   // item 8: holidays visible to all except applicants
   { to: '/holidays', label: 'Holidays', icon: PartyPopper, roles: ['STUDENT', 'FACULTY', 'EXAM_CONTROLLER', 'ACCOUNTS', 'ADMIN', 'HOSTEL_ADMIN'] },

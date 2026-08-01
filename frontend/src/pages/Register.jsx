@@ -54,7 +54,7 @@ export default function Register() {
       <div className="absolute inset-0" style={{
         background: 'linear-gradient(100deg, rgba(5,150,105,.28), transparent 55%)',
       }} />
-      <div className="absolute top-4 right-4 z-20"><ThemeToggle /></div>
+      <div className="absolute top-4 right-4 z-20"><ThemeToggle variant="overlay" /></div>
 
       <TiltCard maxTilt={4} glowColor="16,185,129" className="w-full max-w-md glass rounded-3xl p-8 relative z-10 animate-fade-up">
         <div className="flex items-center gap-2.5 mb-6">

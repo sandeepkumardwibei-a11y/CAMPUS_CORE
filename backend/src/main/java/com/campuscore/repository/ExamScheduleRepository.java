@@ -12,6 +12,7 @@ import java.util.List;
 @Repository
 public interface ExamScheduleRepository extends JpaRepository<ExamSchedule, Long> {
     Page<ExamSchedule> findByAcademicYearAndSemester(String academicYear, Integer semester, Pageable pageable);
+    Page<ExamSchedule> findByAcademicYearAndSemesterAndCourseFacultyUserId(String academicYear, Integer semester, Long facultyUserId, Pageable pageable);
     List<ExamSchedule> findByCourseCourseIdAndAcademicYear(Long courseId, String academicYear);
     List<ExamSchedule> findByExamDateBetween(LocalDate from, LocalDate to);
 }

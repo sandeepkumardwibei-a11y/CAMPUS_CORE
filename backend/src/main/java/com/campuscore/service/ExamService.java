@@ -40,6 +40,24 @@ public class ExamService {
     private final FeeInvoiceRepository feeInvoiceRepository; // 🎯 Added to enforce "fees must be paid before appearing for exam"
     private final ApplicationEventPublisher eventPublisher; // 🔔 Injected event publisher for automatic alerts
 
+    /**
+     * 🔐 Small helper reused by the faculty-ownership checks below: resolves the
+     * currently authenticated user from the security context.
+     */
+    private User getAuthenticatedUser() {
+        String currentEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEmail(currentEmail)
+                .orElseThrow(() -> new ExamException("Access Denied: Unauthenticated session."));
+    }
+
+    /**
+     * 🔐 Returns true if the given course has no assigned faculty, or the assigned
+     * faculty is someone other than the given user — i.e. the user does NOT own it.
+     */
+    private boolean isNotAssignedFaculty(Course course, User user) {
+        return course.getFaculty() == null || !course.getFaculty().getUserId().equals(user.getUserId());
+    }
+
     @Transactional
     public ExamDto.Response scheduleExam(ExamDto.CreateRequest request) {
         log.info("Entering scheduleExam execution pipeline for courseId: {} and examType: {}", 
@@ -119,18 +137,44 @@ public class ExamService {
         log.info("Fetching exam configuration properties for examId: {}", id);
         ExamSchedule exam = examRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ExamSchedule", "id", id));
+
+        // 🔐 FACULTY OWNERSHIP CHECK: faculty may only view exam details for courses they teach.
+        User currentUser = getAuthenticatedUser();
+        if (currentUser.getRole() == User.Role.FACULTY && isNotAssignedFaculty(exam.getCourse(), currentUser)) {
+            throw new ExamException("Access Denied: You can only view exam details for courses you teach.");
+        }
+
         return toExamResponse(exam);
     }
 
     @Transactional(readOnly = true)
     public Page<ExamDto.Response> getExamsBySemester(String academicYear, Integer semester, Pageable pageable) {
         log.info("Querying system exam index sheets for academicYear: {} and semester: {}", academicYear, semester);
+
+        // 🔐 FACULTY OWNERSHIP CHECK: faculty only ever see exams for courses they teach.
+        User currentUser = getAuthenticatedUser();
+        if (currentUser.getRole() == User.Role.FACULTY) {
+            return examRepository.findByAcademicYearAndSemesterAndCourseFacultyUserId(
+                    academicYear, semester, currentUser.getUserId(), pageable).map(this::toExamResponse);
+        }
+
         return examRepository.findByAcademicYearAndSemester(academicYear, semester, pageable).map(this::toExamResponse);
     }
 
     @Transactional(readOnly = true)
     public List<ExamDto.Response> getExamsByCourse(Long courseId, String academicYear) {
         log.info("Querying system exam matrices array for courseId: {} and academicYear: {}", courseId, academicYear);
+
+        // 🔐 FACULTY OWNERSHIP CHECK: faculty may only view exams for courses they teach.
+        User currentUser = getAuthenticatedUser();
+        if (currentUser.getRole() == User.Role.FACULTY) {
+            Course course = courseRepository.findById(courseId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
+            if (isNotAssignedFaculty(course, currentUser)) {
+                throw new ExamException("Access Denied: You can only view exams for courses you teach.");
+            }
+        }
+
         return examRepository.findByCourseCourseIdAndAcademicYear(courseId, academicYear).stream()
                 .map(this::toExamResponse).collect(Collectors.toList());
     }
@@ -155,6 +199,20 @@ public class ExamService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", facultyId));
 
         Course course = exam.getCourse();
+
+        // 🔐 FACULTY OWNERSHIP CHECK: a faculty member may only grade exams for the
+        // course assigned to them, and only under their own identity (they cannot
+        // submit grades on behalf of a different faculty member).
+        User currentUser = getAuthenticatedUser();
+        if (currentUser.getRole() == User.Role.FACULTY) {
+            if (!currentUser.getUserId().equals(facultyId)) {
+                throw new ExamException("Access Denied: You can only submit grades under your own faculty identity.");
+            }
+            if (isNotAssignedFaculty(course, currentUser)) {
+                throw new ExamException("Access Denied: You can only enter grades for the course you teach ('"
+                        + course.getCourseName() + "' is not assigned to you).");
+            }
+        }
 
         for (GradeDto.EnterGradeRequest req : grades) {
             User student = userRepository.findById(req.getStudentId())
@@ -342,6 +400,11 @@ public class ExamService {
         // If a student is fetching the entire exam's grades, block them immediately
         if (currentUser.getRole() == User.Role.STUDENT) {
             throw new ExamException("Access Denied: Students are not authorized to access global exam sheets.");
+        }
+
+        // 🔐 FACULTY OWNERSHIP CHECK: faculty may only view grades for courses they teach.
+        if (currentUser.getRole() == User.Role.FACULTY && isNotAssignedFaculty(exam.getCourse(), currentUser)) {
+            throw new ExamException("Access Denied: You can only view grades for courses you teach.");
         }
 
         return gradeRepository.findByExamExamId(examId).stream()

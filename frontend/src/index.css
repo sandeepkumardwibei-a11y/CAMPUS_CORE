@@ -62,6 +62,7 @@ body {
 .dark .aurora-bg::after { opacity: .3; }
 @keyframes auroraA { 0%,100%{transform:translate(0,0)} 50%{transform:translate(6%,8%)} }
 @keyframes auroraB { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-6%,-6%)} }
+@keyframes campusPan { 0%,100% { transform: scale(1.05) translate(0,0); } 50% { transform: scale(1.1) translate(-1.5%,-1%); } }
 
 @media (prefers-reduced-motion: reduce) {
   *, .aurora-bg::before, .aurora-bg::after { animation: none !important; }

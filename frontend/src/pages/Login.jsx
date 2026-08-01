@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { apiMessage } from '../lib/api'
 import { Button, Input, Field } from '../components/ui'
+import { TiltCard } from '../components/ui/extras'
 import ThemeToggle from '../components/ThemeToggle'
 
 export default function Login() {
@@ -36,23 +37,37 @@ export default function Login() {
       <div className="aurora-bg" />
       <div className="absolute top-4 right-4 z-20"><ThemeToggle /></div>
 
-      {/* Brand panel */}
-      <div className="hidden lg:flex flex-col justify-between w-[46%] relative z-10 p-12 text-white overflow-hidden gradient-btn">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl grid place-items-center bg-white/20 backdrop-blur"><GraduationCap size={24} /></div>
+      {/* Brand panel — the campus, lit at golden hour */}
+      <div className="hidden lg:flex flex-col justify-between w-[46%] relative z-10 p-12 text-white overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center scale-105 animate-[campusPan_22s_ease-in-out_infinite]"
+          style={{ backgroundImage: 'url(/campus-hero.jpg)' }}
+        />
+        <div className="absolute inset-0" style={{
+          background: 'linear-gradient(175deg, rgba(4,12,10,.55) 0%, rgba(4,18,14,.72) 55%, rgba(3,9,7,.92) 100%)',
+        }} />
+        <div className="absolute inset-0" style={{
+          background: 'linear-gradient(100deg, rgba(5,150,105,.35), transparent 55%)',
+        }} />
+
+        <div className="relative flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl grid place-items-center bg-white/15 backdrop-blur ring-1 ring-white/20"><GraduationCap size={24} /></div>
           <span className="font-display font-bold text-2xl">CampusCore</span>
         </div>
-        <div>
+        <div className="relative">
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold mb-4 bg-white/10 backdrop-blur ring-1 ring-white/20 text-amber-200">
+            Est. for the whole campus
+          </span>
           <h1 className="font-display text-4xl font-bold leading-tight">The whole campus,
 in one system.</h1>
           <p className="mt-4 text-white/80 max-w-md">Admissions to alumni — programs, courses, exams, attendance, fees, hostel and more, unified into a single operational core.</p>
         </div>
-        <p className="text-white/60 text-sm">© {new Date().getFullYear()} CampusCore</p>
+        <p className="relative text-white/60 text-sm">© {new Date().getFullYear()} CampusCore</p>
       </div>
 
       {/* Form panel */}
       <div className="flex-1 relative z-10 flex items-center justify-center p-6">
-        <div className="w-full max-w-sm animate-fade-up">
+        <TiltCard maxTilt={4} className="w-full max-w-sm animate-fade-up glass rounded-3xl p-8" glowColor="16,185,129">
           <div className="lg:hidden flex items-center gap-2.5 mb-8">
             <div className="w-10 h-10 rounded-xl grid place-items-center gradient-btn text-white"><GraduationCap size={20} /></div>
             <span className="font-display font-bold text-xl gradient-text">CampusCore</span>
@@ -94,7 +109,7 @@ in one system.</h1>
           <p className="mt-6 text-sm text-center" style={{ color: 'var(--text-muted)' }}>
             New here? <Link to="/register" className="font-semibold text-emerald-400 hover:underline">Create an account</Link>
           </p>
-        </div>
+        </TiltCard>
       </div>
     </div>
   )

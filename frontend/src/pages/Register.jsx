@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { apiMessage } from '../lib/api'
 import { Button, Input, Field, Select } from '../components/ui'
+import { TiltCard } from '../components/ui/extras'
 import { REGISTERABLE_ROLES } from '../lib/constants'
 import ThemeToggle from '../components/ThemeToggle'
 
@@ -41,10 +42,21 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-6">
-      <div className="aurora-bg" />
+    <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">
+      {/* Full-bleed campus backdrop */}
+      <div
+        className="absolute inset-0 bg-cover bg-center scale-105 animate-[campusPan_22s_ease-in-out_infinite]"
+        style={{ backgroundImage: 'url(/campus-hero.jpg)' }}
+      />
+      <div className="absolute inset-0" style={{
+        background: 'radial-gradient(120% 100% at 50% 0%, rgba(4,14,11,.45) 0%, rgba(3,10,8,.75) 55%, rgba(2,7,5,.92) 100%)',
+      }} />
+      <div className="absolute inset-0" style={{
+        background: 'linear-gradient(100deg, rgba(5,150,105,.28), transparent 55%)',
+      }} />
       <div className="absolute top-4 right-4 z-20"><ThemeToggle /></div>
-      <div className="w-full max-w-md glass rounded-3xl p-8 relative z-10 animate-fade-up">
+
+      <TiltCard maxTilt={4} glowColor="16,185,129" className="w-full max-w-md glass rounded-3xl p-8 relative z-10 animate-fade-up">
         <div className="flex items-center gap-2.5 mb-6">
           <div className="w-10 h-10 rounded-xl grid place-items-center gradient-btn text-white"><GraduationCap size={20} /></div>
           <span className="font-display font-bold text-xl gradient-text">CampusCore</span>
@@ -97,7 +109,7 @@ export default function Register() {
         <p className="mt-6 text-sm text-center" style={{ color: 'var(--text-muted)' }}>
           Already have an account? <Link to="/login" className="font-semibold text-emerald-400 hover:underline">Sign in</Link>
         </p>
-      </div>
+      </TiltCard>
     </div>
   )
 }

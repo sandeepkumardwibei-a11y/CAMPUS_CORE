@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { GraduationCap, ArrowRight, BookOpen, Users, CalendarCheck, Award } from 'lucide-react'
 import ThemeToggle from '../components/ThemeToggle'
+import { TiltCard } from '../components/ui/extras'
 
 const QUOTES = [
   { text: 'Education is the most powerful weapon which you can use to change the world.', author: 'Nelson Mandela' },
@@ -60,8 +61,8 @@ export default function Landing() {
             unified into a single operational core.
           </p>
 
-          {/* Rotating quote */}
-          <div className="mt-10 glass rounded-2xl px-6 py-8 max-w-2xl mx-auto border" style={{ borderColor: 'var(--border)' }}>
+          {/* Rotating quote — interactive: tilts toward the cursor */}
+          <TiltCard maxTilt={5} glowColor="245,158,11" className="mt-10 glass rounded-2xl px-6 py-8 max-w-2xl mx-auto border" style={{ borderColor: 'var(--border)' }}>
             <div key={i} className="animate-fade-up">
               <p className="font-display text-lg sm:text-2xl font-semibold leading-snug" style={{ color: 'var(--text)' }}>
                 “{QUOTES[i].text}”
@@ -75,7 +76,7 @@ export default function Landing() {
                   style={{ color: 'var(--text-muted)' }} />
               ))}
             </div>
-          </div>
+          </TiltCard>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <Link to="/register" className="px-6 py-3 rounded-xl font-semibold gradient-btn text-white shadow-lg shadow-emerald-500/25 inline-flex items-center gap-2">

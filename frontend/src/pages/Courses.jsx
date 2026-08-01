@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { BookOpen, Plus, Search, UserPlus, ChevronDown, X } from 'lucide-react'
-import { CourseApi, ProgramApi, RegistrationApi } from '../lib/services'
+import { CourseApi, ProgramApi } from '../lib/services'
 import { useAsync, asArray } from '../lib/hooks'
 import { apiMessage } from '../lib/api'
 import { useToast } from '../context/ToastContext'
@@ -68,33 +68,17 @@ export default function Courses() {
   const { user } = useAuth()
   const role = user?.role
   const isFaculty = role === 'FACULTY'
-  const isStudent = role === 'STUDENT'
   const canManage = can(user?.role, 'course.create')
   const [tab, setTab] = useState('all')
-  // Admin/exam-controller get the full catalogue. Faculty only ever fetch their own
-  // assigned courses. Students still fetch the catalogue but every result set below
-  // gets filtered down to courses they're actually registered for (scopeToSelf).
+  // Admin/exam-controller/student/applicant all get the full catalogue.
+  // Faculty only ever fetch their own assigned courses.
   const { data, loading, reload } = useAsync(
     () => (isFaculty ? CourseApi.byFaculty(Number(user.userId)) : CourseApi.all()),
     [isFaculty, user?.userId]
   )
-  const { data: myRegs } = useAsync(
-    () => (isStudent ? RegistrationApi.byStudent(Number(user.userId)) : Promise.resolve([])),
-    [isStudent, user?.userId]
-  )
-  const myCourseIds = useMemo(() => {
-    if (!isStudent) return null
-    const ids = new Set()
-    asArray(myRegs).forEach((r) => {
-      (r.courses || []).forEach((c) => ids.add(c.courseId))
-      ;(r.courseIds || []).forEach((id) => ids.add(id))
-    })
-    return ids
-  }, [isStudent, myRegs])
-  // Applied to EVERY result set (all/by-program/by-faculty) so faculty and students
-  // can never see courses outside their own scope, regardless of which tab they use.
+  // Students now see the full catalogue like every other role — only faculty stay
+  // scoped to the courses they're actually assigned to teach.
   const scopeToSelf = (arr) => {
-    if (isStudent) return myCourseIds ? arr.filter((c) => myCourseIds.has(c.courseId)) : []
     if (isFaculty) return arr.filter((c) => Number(c.facultyId) === Number(user.userId))
     return arr
   }

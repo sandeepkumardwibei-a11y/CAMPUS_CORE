@@ -1,4 +1,5 @@
 com\campuscore\dto\FeeDto$VerifyRequest$VerifyRequestBuilder.class
+com\campuscore\dto\AdmissionDto$ListItem$ListItemBuilder.class
 com\campuscore\dto\NotificationDto$Response.class
 com\campuscore\dto\DepartmentDto$CreateRequest$CreateRequestBuilder.class
 com\campuscore\service\ProgramService.class
@@ -51,6 +52,7 @@ com\campuscore\entity\AttendanceSummary.class
 com\campuscore\dto\GradeDto$ResultResponse.class
 com\campuscore\service\FileStorageService.class
 com\campuscore\entity\HostelRoom.class
+com\campuscore\dto\AdmissionDto$ListItem.class
 com\campuscore\security\JwtAuthenticationFilter.class
 com\campuscore\entity\User.class
 com\campuscore\dto\HostelDto$AllotmentRequest$AllotmentRequestBuilder.class

@@ -43,7 +43,7 @@ function ExamList({ toast }) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const canSchedule = can(user?.role, 'exam.schedule')
-  const { data: coursesData } = useAsync(() => (canSchedule ? CourseApi.all() : Promise.resolve([])), [canSchedule])
+  const { data: coursesData } = useAsync(() => CourseApi.all(), [])
   const courses = asArray(coursesData)
   const [mode, setMode] = useState('list') // 'list' | 'course'
   const [q, setQ] = useState({ academicYear: '2026-27', semester: '3', courseId: '' })

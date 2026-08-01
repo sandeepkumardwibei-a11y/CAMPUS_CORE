@@ -233,7 +233,7 @@ export default function AdmissionDetail() {
         subtitle="Manage and view pipeline progression history records."
         actions={<Button variant="outline" onClick={load} loading={loading}><RefreshCw size={15} /> Refresh Data</Button>} />
 
-      {loading ? <Spinner /> : (
+      {loading && !data ? <Spinner /> : (
         <>
           <Card className="p-6 mb-6">
             <div className="flex flex-wrap items-center gap-3 mb-5">
@@ -389,9 +389,9 @@ export default function AdmissionDetail() {
           <div className="space-y-2 text-sm">
             {typeof viewer.data === 'object'
               ? Object.entries(viewer.data).map(([k, v]) => (
-                  <div key={k} className="flex justify-between gap-4 py-1.5 border-b" style={{ borderColor: 'var(--border)' }}>
-                    <span className="font-mono text-xs" style={{ color: 'var(--text-faint)' }}>{k}</span>
-                    <span className="text-right font-medium" style={{ color: 'var(--text)' }}>{v == null ? '—' : String(v)}</span>
+                  <div key={k} className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-4 py-1.5 border-b" style={{ borderColor: 'var(--border)' }}>
+                    <span className="font-mono text-xs shrink-0" style={{ color: 'var(--text-faint)' }}>{k}</span>
+                    <span className="sm:text-right font-medium break-all" style={{ color: 'var(--text)' }}>{v == null ? '—' : String(v)}</span>
                   </div>
                 ))
               : <p style={{ color: 'var(--text)' }}>{String(viewer.data)}</p>}

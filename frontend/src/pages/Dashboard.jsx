@@ -101,7 +101,7 @@ export default function Dashboard() {
           <StatCard label="Rooms available" value={stats.rooms} icon={BedDouble} tone="emerald" />
         )}
         {can(user?.role, 'users.updateStatus') && (
-          <Link to="/users">
+          <Link to="/users?status=PENDING">
             <StatCard label="Pending approvals" value={stats.pendingApprovals} icon={UserCog} tone="amber" />
           </Link>
         )}

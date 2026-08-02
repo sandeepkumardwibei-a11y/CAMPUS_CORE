@@ -20,6 +20,14 @@ public class Timetable {
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
 
+    // 🎯 Which specific program this class session is held for. The course itself
+    // may be cross-listed to several programs (Course.programIds), but a given
+    // slot is always for one of them — needed to detect "this program already has
+    // an overlapping class" conflicts precisely, instead of just because the
+    // course happens to be cross-listed to several programs.
+    @Column(name = "program_id")
+    private Long programId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "day_of_week", nullable = false, length = 10)
     private DayOfWeek dayOfWeek;

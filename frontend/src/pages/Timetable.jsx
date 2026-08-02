@@ -186,10 +186,13 @@ export default function Timetable() {
     if (overlapsBreak(form.startTime, form.endTime)) {
       toast.error('That time overlaps a break. No classes can be scheduled during break times.'); return
     }
+    if (!form.programId) {
+      toast.error('Please select a program for this timetable slot.'); return
+    }
     setSaving(true)
     try {
       await TimetableApi.create({
-        courseId: Number(form.courseId), dayOfWeek: form.dayOfWeek,
+        courseId: Number(form.courseId), programId: Number(form.programId), dayOfWeek: form.dayOfWeek,
         startTime: form.startTime.length === 5 ? `${form.startTime}:00` : form.startTime,
         endTime: form.endTime.length === 5 ? `${form.endTime}:00` : form.endTime,
         venue: form.venue, academicYear: form.academicYear, semester: Number(form.semester),

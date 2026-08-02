@@ -4,12 +4,14 @@ import com.campuscore.dto.NotificationDto;
 import com.campuscore.dto.TimetableDto;
 import com.campuscore.entity.Course;
 import com.campuscore.entity.Notification.NotificationCategory;
+import com.campuscore.entity.Program;
 import com.campuscore.entity.SemesterRegistration;
 import com.campuscore.entity.Timetable;
 import com.campuscore.entity.User;
 import com.campuscore.exception.ResourceNotFoundException;
 import com.campuscore.exception.TimetableException;
 import com.campuscore.repository.CourseRepository;
+import com.campuscore.repository.ProgramRepository;
 import com.campuscore.repository.TimetableRepository;
 import com.campuscore.repository.SemesterRegistrationRepository;
 import com.campuscore.repository.UserRepository;
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -33,6 +36,7 @@ public class TimetableService {
     private final SemesterRegistrationRepository registrationRepository;
     private final UserRepository userRepository;
     private final CourseRepository courseRepository; // 🎯 Added for Course verification
+    private final ProgramRepository programRepository; // 🎯 Added to validate/resolve the slot's program
     private final ApplicationEventPublisher eventPublisher; // 🔔 INJECTED FOR EVENT PUBLISHING
 
     /**
@@ -78,7 +82,7 @@ public class TimetableService {
      */
     @Transactional
     public TimetableDto.Response createSlot(TimetableDto.CreateRequest request) {
-        log.info("Processing requests to construct timetable slot for Course ID: {}, Venue: {}, Term Day: {}", 
+        log.info("Processing requests to construct timetable slot for Course ID: {}, Venue: {}, Term Day: {}",
                 request.getCourseId(), request.getVenue(), request.getDayOfWeek());
 
         // 1. Chronological Check: Ensure start time is strictly before the end time
@@ -107,9 +111,23 @@ public class TimetableService {
                     return new ResourceNotFoundException("Course", "id", request.getCourseId());
                 });
 
+        // 2b. The admin must pick which program this class session is for (the
+        //     dropdown already shown when creating a slot), and the course must
+        //     actually be offered under that program.
+        if (request.getProgramId() == null) {
+            throw new TimetableException("Validation Failed: Please select a program for this timetable slot.");
+        }
+        Program program = programRepository.findById(request.getProgramId())
+                .orElseThrow(() -> new ResourceNotFoundException("Program", "id", request.getProgramId()));
+        List<Long> courseProgramIds = course.getProgramIds() != null ? course.getProgramIds() : List.of();
+        if (!courseProgramIds.contains(request.getProgramId())) {
+            throw new TimetableException("Validation Failed: The course '" + course.getCourseName() +
+                    "' is not offered under the program '" + program.getProgramName() + "'.");
+        }
+
         // 3. Cross-verify if course is registered/allocated to the requested semester
         if (!course.getSemester().equals(request.getSemester())) {
-            log.error("Structural validation mismatch: Course '{}' Semester constraints ({}) do not equal requested target configuration ({})", 
+            log.error("Structural validation mismatch: Course '{}' Semester constraints ({}) do not equal requested target configuration ({})",
                     course.getCourseName(), course.getSemester(), request.getSemester());
             throw new TimetableException("Validation Failed: The course '" + course.getCourseName() +
                     "' belongs to Semester " + course.getSemester() + ". You cannot assign it to a Semester " +
@@ -126,21 +144,25 @@ public class TimetableService {
         }
 
         // 4. Precise scheduling-conflict rules (day + overlapping time window):
-        //      a) Same PROGRAM already has a class in that window            -> conflict
-        //      b) Same ROOM/venue already booked in that window              -> conflict
-        //      c) Same FACULTY already teaching a DIFFERENT course in that
-        //         window                                                    -> conflict
+        //      a) Same ROOM/venue already booked in that window    -> conflict
+        //      b) Same FACULTY already teaching anything else in
+        //         that window                                     -> conflict
+        //      c) Same PROGRAM (the one explicitly selected for this slot)
+        //         already has a class in that window               -> conflict,
+        //         since students in that program cannot be in two classes at once.
+        //         This compares the program picked for THIS slot against the
+        //         program picked for each EXISTING slot (Timetable.programId) —
+        //         not the full list of programs the course is merely cross-listed
+        //         to — so two different courses that both happen to be offered to
+        //         several shared programs don't falsely collide when neither is
+        //         actually scheduled for that program at this time.
         //    Explicitly allowed even though the time overlaps:
-        //      - Different program, same course (a shared/cross-listed course
-        //        taught to another program at the same time)
-        //      - Different course, different faculty, different room (fully
-        //        unrelated classes)
+        //      - Different program, different course, different faculty, different
+        //        room (fully unrelated classes)
         log.debug("Evaluating precise scheduling-conflict rules against ALL allocations on day: {}", targetDay);
         List<Timetable> sameDaySlots = timetableRepository.findAll().stream()
                 .filter(t -> t.getDayOfWeek() == targetDay)
                 .collect(Collectors.toList());
-
-        List<Long> newCourseProgramIds = course.getProgramIds() != null ? course.getProgramIds() : List.of();
 
         for (Timetable slot : sameDaySlots) {
             boolean overlaps = (request.getStartTime().isBefore(slot.getEndTime()) &&
@@ -148,20 +170,8 @@ public class TimetableService {
             if (!overlaps) continue;
 
             Course existingCourse = slot.getCourse();
-            boolean sameCourse = existingCourse.getCourseId().equals(course.getCourseId());
 
-            // a) Same program conflict — takes priority over everything else.
-            List<Long> existingProgramIds = existingCourse.getProgramIds() != null ? existingCourse.getProgramIds() : List.of();
-            boolean sharesProgram = newCourseProgramIds.stream().anyMatch(existingProgramIds::contains);
-            if (sharesProgram) {
-                log.warn("Scheduling conflict (program overlap): Course ID {} vs existing slot ID {}", request.getCourseId(), slot.getTimetableId());
-                throw new TimetableException("Scheduling Conflict: One of the selected programs already has a class (" +
-                        existingCourse.getCourseCode() + ") scheduled on " + targetDay +
-                        " between " + slot.getStartTime() + " and " + slot.getEndTime() +
-                        ". A program cannot have two overlapping classes.");
-            }
-
-            // b) Same room conflict.
+            // a) Same room conflict.
             boolean sameRoom = request.getVenue() != null && !request.getVenue().isBlank()
                     && request.getVenue().equalsIgnoreCase(slot.getVenue());
             if (sameRoom) {
@@ -172,23 +182,36 @@ public class TimetableService {
                         ". The same room cannot host two overlapping classes.");
             }
 
-            // c) Same faculty teaching a different course at the same time. (Same faculty +
-            //    same course, e.g. a cross-listed course for another program, is allowed.)
+            // b) Same faculty teaching at the same time — even for "the same course",
+            //    since that faculty member cannot physically be in two rooms at once.
             boolean sameFaculty = course.getFaculty() != null && existingCourse.getFaculty() != null
                     && course.getFaculty().getUserId().equals(existingCourse.getFaculty().getUserId());
-            if (sameFaculty && !sameCourse) {
+            if (sameFaculty) {
                 log.warn("Scheduling conflict (faculty double-booked): Faculty ID {} vs existing slot ID {}",
                         course.getFaculty().getUserId(), slot.getTimetableId());
                 throw new TimetableException("Scheduling Conflict: Faculty '" + course.getFaculty().getName() +
-                        "' is already teaching " + existingCourse.getCourseCode() + " on " + targetDay +
+                        "' is already teaching " + existingCourse.getCourseCode() + " (Venue: " + slot.getVenue() + ") on " + targetDay +
                         " between " + slot.getStartTime() + " and " + slot.getEndTime() +
-                        ". The same faculty cannot teach two different courses at the same time.");
+                        ". The same faculty cannot teach two overlapping classes at once.");
+            }
+
+            // c) Same program conflict — the program explicitly selected for this
+            //    slot already has a different class scheduled in this window.
+            boolean sameProgram = slot.getProgramId() != null && slot.getProgramId().equals(request.getProgramId());
+            if (sameProgram) {
+                log.warn("Scheduling conflict (program overlap): Program ID {} vs existing slot ID {}", request.getProgramId(), slot.getTimetableId());
+                throw new TimetableException("Scheduling Conflict: The program '" + program.getProgramName() +
+                        "' already has a class (" + existingCourse.getCourseCode() + ", Venue: " + slot.getVenue() +
+                        ") scheduled on " + targetDay + " between " + slot.getStartTime() + " and " + slot.getEndTime() +
+                        ". A program cannot have two overlapping classes.");
             }
         }
+
 
         // Build and preserve entity
         Timetable timetable = Timetable.builder()
                 .course(course)
+                .programId(request.getProgramId())
                 .dayOfWeek(targetDay)
                 .startTime(request.getStartTime())
                 .endTime(request.getEndTime())
@@ -203,7 +226,7 @@ public class TimetableService {
         // 🔔 AUTOMATIC NOTIFICATION: Find all students currently registered for this course and notify them of the schedule update
         List<SemesterRegistration> enrolledStudents = registrationRepository.findByCoursesCourseId(course.getCourseId());
         log.debug("Found {} registered student configurations mapping to Course ID: {}. Dispatched scheduling alerts.", enrolledStudents.size(), course.getCourseId());
-        
+
         String notificationMessage = String.format(
                 "New Class Schedule Slot Assigned: A new timetable slot has been configured for '%s' (%s). Day: %s, Time: %s - %s at Venue: %s.",
                 course.getCourseName(),
@@ -253,7 +276,7 @@ public class TimetableService {
 
     @Transactional(readOnly = true)
     public List<TimetableDto.Response> getStudentSchedule(Long studentId, Long programId, String academicYear, Integer semester) {
-        log.debug("Fetching student personal calendar schedule matrix data for Student ID: {}, Program ID: {}, Semester: {}", 
+        log.debug("Fetching student personal calendar schedule matrix data for Student ID: {}, Program ID: {}, Semester: {}",
                 studentId, programId, semester);
         User currentUser = verifyContextAndGetAuthenticatedUser();
 
@@ -268,24 +291,78 @@ public class TimetableService {
                 .map(reg -> {
                     log.debug("Registration record trace verified. Expanding course child segments collection mapping matrix streams.");
                     return reg.getCourses().stream()
-                        .flatMap(course -> timetableRepository.findByCourse_CourseId(course.getCourseId()).stream())
-                        .filter(t -> t.getAcademicYear().equalsIgnoreCase(academicYear) && t.getSemester().equals(semester))
-                        .map(this::toResponse)
-                        .collect(Collectors.toList());
+                            .flatMap(course -> timetableRepository.findByCourse_CourseId(course.getCourseId()).stream())
+                            .filter(t -> t.getAcademicYear().equalsIgnoreCase(academicYear) && t.getSemester().equals(semester))
+                            .map(this::toResponse)
+                            .collect(Collectors.toList());
                 }).orElseThrow(() -> {
                     log.error("Data tracking failure: No verified active registration matching parameters was found for Student ID: {}", studentId);
                     return new TimetableException(
-                        "Active registration records not found. Please verify your Student ID, Program ID, Academic Year, and Semester credentials correctly."
+                            "Active registration records not found. Please verify your Student ID, Program ID, Academic Year, and Semester credentials correctly."
                     );
                 });
     }
 
+    /**
+     * 🎯 STUDENT SELF-SERVICE: Returns the logged-in student's own weekly schedule
+     * without requiring them to type their Student/Program ID, academic year or
+     * semester — those are inferred from their own (most recent, non-withdrawn)
+     * semester registration.
+     */
+    @Transactional(readOnly = true)
+    public List<TimetableDto.Response> getMyStudentSchedule() {
+        User currentUser = verifyContextAndGetAuthenticatedUser();
+        if (currentUser.getRole() != User.Role.STUDENT) {
+            throw new TimetableException("Access Denied: Only students can view their own schedule via this endpoint.");
+        }
+
+        SemesterRegistration current = registrationRepository.findByStudentUserId(currentUser.getUserId()).stream()
+                .filter(r -> r.getStatus() != SemesterRegistration.RegistrationStatus.WITHDRAWN)
+                .max(Comparator.comparing(SemesterRegistration::getAcademicYear)
+                        .thenComparing(SemesterRegistration::getSemester))
+                .orElseThrow(() -> new TimetableException(
+                        "No active semester registration found for your account. Please contact administration."));
+
+        return current.getCourses().stream()
+                .flatMap(course -> timetableRepository.findByCourse_CourseId(course.getCourseId()).stream())
+                .filter(t -> t.getAcademicYear().equalsIgnoreCase(current.getAcademicYear()) && t.getSemester().equals(current.getSemester()))
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 🎯 FACULTY SELF-SERVICE: Returns the logged-in faculty member's own teaching
+     * timetable — every scheduled slot across every course they are assigned to —
+     * without requiring them to look up and type a Course ID.
+     */
+    @Transactional(readOnly = true)
+    public List<TimetableDto.Response> getMyTeachingSchedule() {
+        User currentUser = verifyContextAndGetAuthenticatedUser();
+        if (currentUser.getRole() != User.Role.FACULTY) {
+            throw new TimetableException("Access Denied: Only faculty can view their own teaching schedule via this endpoint.");
+        }
+
+        List<Course> myCourses = courseRepository.findByFacultyUserId(currentUser.getUserId());
+        return myCourses.stream()
+                .flatMap(course -> timetableRepository.findByCourse_CourseId(course.getCourseId()).stream())
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
     private TimetableDto.Response toResponse(Timetable t) {
+        String programName = null;
+        if (t.getProgramId() != null) {
+            programName = programRepository.findById(t.getProgramId())
+                    .map(Program::getProgramName)
+                    .orElse(null);
+        }
         return TimetableDto.Response.builder()
                 .timetableId(t.getTimetableId())
                 .courseId(t.getCourse().getCourseId())
                 .courseCode(t.getCourse().getCourseCode())
                 .courseName(t.getCourse().getCourseName())
+                .programId(t.getProgramId())
+                .programName(programName)
                 .dayOfWeek(t.getDayOfWeek().name())
                 .startTime(t.getStartTime())
                 .endTime(t.getEndTime())

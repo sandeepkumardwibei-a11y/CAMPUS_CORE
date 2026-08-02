@@ -67,9 +67,13 @@ export default function Users() {
                 <Cell><Badge value={u.status} /></Cell>
                 {canManage && (
                   <Cell>
-                    <Select className="field !py-1 !text-xs" value={u.status || ''}
-                      onChange={(e) => changeStatus(u.id ?? u.userId, e.target.value)}
-                      options={u.role === 'STUDENT' ? USER_STATUS : USER_STATUS.filter((s) => s !== 'ALUMNI')} placeholder="Set status…" />
+                    {u.role === 'ADMIN' ? (
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>
+                    ) : (
+                      <Select className="field !py-1 !text-xs" value={u.status || ''}
+                        onChange={(e) => changeStatus(u.id ?? u.userId, e.target.value)}
+                        options={u.role === 'STUDENT' ? USER_STATUS : USER_STATUS.filter((s) => s !== 'ALUMNI')} placeholder="Set status…" />
+                    )}
                   </Cell>
                 )}
               </Row>

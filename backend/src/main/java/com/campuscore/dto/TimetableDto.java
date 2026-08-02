@@ -13,6 +13,13 @@ public class TimetableDto {
     @Builder
     public static class CreateRequest {
         private Long courseId;
+
+        // 🎯 Which specific program this class session is for. The course itself
+        // may be cross-listed to several programs, but a given timetable slot is
+        // always held for one of them — required so scheduling conflicts can be
+        // checked per-program.
+        private Long programId;
+
         private String dayOfWeek;
 
         // 🎯 FIX: Tells Jackson to expect a plain string format instead of an object
@@ -34,6 +41,8 @@ public class TimetableDto {
         private Long courseId;
         private String courseCode;
         private String courseName;
+        private Long programId;
+        private String programName;
         private String dayOfWeek;
 
         @JsonFormat(pattern = "HH:mm:ss")

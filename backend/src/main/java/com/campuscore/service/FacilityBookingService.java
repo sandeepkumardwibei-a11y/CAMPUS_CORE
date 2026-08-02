@@ -46,12 +46,28 @@ public class FacilityBookingService {
         }
     }
 
+    private static final java.time.LocalTime DAY_START = java.time.LocalTime.of(8, 0);
+    private static final java.time.LocalTime DAY_END = java.time.LocalTime.of(16, 0);
+
     @Transactional
     public HostelDto.BookingResponse bookFacility(HostelDto.BookingRequest request, Long userId) {
         log.info("Entering bookFacility sequence for facilityName: {} and userId: {}", request.getFacilityName(), userId);
 
         // 🔐 Enforce explicit identity validation rule
         verifyOwnership(userId);
+
+        // RULE: Start time must be strictly before end time.
+        if (!request.getStartTime().isBefore(request.getEndTime())) {
+            log.warn("Booking creation rejected: end time ({}) is not after start time ({}).", request.getEndTime(), request.getStartTime());
+            throw new FacilityBookingException("Validation Failed: Start time (" + request.getStartTime() +
+                    ") must be strictly before the end time (" + request.getEndTime() + ").");
+        }
+
+        // RULE: Booking must fall within college operating hours (08:00–16:00).
+        if (request.getStartTime().isBefore(DAY_START) || request.getEndTime().isAfter(DAY_END)) {
+            log.warn("Booking creation rejected: outside college hours. Start: {}, End: {}", request.getStartTime(), request.getEndTime());
+            throw new FacilityBookingException("Validation Failed: Bookings must fall within college hours (08:00–16:00).");
+        }
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
@@ -98,6 +114,27 @@ public class FacilityBookingService {
                 .orElseThrow(() -> new ResourceNotFoundException("FacilityBooking", "id", bookingId));
 
         FacilityBooking.BookingStatus newStatus = FacilityBooking.BookingStatus.valueOf(status.toUpperCase());
+
+        // RULE: No two bookings for the same facility can both be APPROVED for an
+        // overlapping time window — check against every other already-APPROVED booking.
+        if (newStatus == FacilityBooking.BookingStatus.APPROVED) {
+            List<FacilityBooking> sameDayBookings = bookingRepository.findByFacilityNameAndBookingDate(
+                    booking.getFacilityName(), booking.getBookingDate());
+            for (FacilityBooking other : sameDayBookings) {
+                if (other.getBookingId().equals(booking.getBookingId())) continue;
+                if (other.getStatus() != FacilityBooking.BookingStatus.APPROVED) continue;
+                boolean overlaps = booking.getStartTime().isBefore(other.getEndTime())
+                        && booking.getEndTime().isAfter(other.getStartTime());
+                if (overlaps) {
+                    log.warn("Approval rejected: booking ID {} overlaps with already-approved booking ID {}.", bookingId, other.getBookingId());
+                    throw new FacilityBookingException("Scheduling Conflict: '" + booking.getFacilityName() +
+                            "' already has an approved booking on " + booking.getBookingDate() +
+                            " between " + other.getStartTime() + " and " + other.getEndTime() +
+                            ". Two bookings for the same facility cannot both be approved for overlapping times.");
+                }
+            }
+        }
+
         booking.setStatus(newStatus);
         FacilityBooking savedBooking = bookingRepository.save(booking);
 

@@ -5,12 +5,20 @@ import { useAsync, asArray } from '../lib/hooks'
 import { apiMessage } from '../lib/api'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
-import { BOOKING_STATUS, can } from '../lib/constants'
+import { can } from '../lib/constants'
 import {
   PageHeader, Card, Button, Table, Row, Cell, Badge, Spinner, EmptyState,
   Modal, Field, Input, Select,
 } from '../components/ui'
 import { Tabs } from '../components/ui/extras'
+
+const nextStatusOptions = (current) => {
+  switch (current) {
+    case 'REQUESTED': return ['APPROVED', 'REJECTED']
+    case 'APPROVED': return ['COMPLETED']
+    default: return [] // REJECTED / COMPLETED are terminal — no further transition
+  }
+}
 
 export default function Bookings() {
   const toast = useToast()
@@ -90,8 +98,12 @@ export default function Bookings() {
                 <Cell><Badge value={b.status} /></Cell>
                 {canManage && (
                   <Cell>
-                    <Select className="field !py-1 !text-xs !w-32" value={b.status || ''}
-                      onChange={(e) => updateStatus(b.bookingId, e.target.value)} options={BOOKING_STATUS} placeholder="Set…" />
+                    {nextStatusOptions(b.status).length > 0 ? (
+                      <Select className="field !py-1 !text-xs !w-32" value=""
+                        onChange={(e) => updateStatus(b.bookingId, e.target.value)} options={nextStatusOptions(b.status)} placeholder="Set…" />
+                    ) : (
+                      <span className="text-xs" style={{ color: 'var(--text-faint)' }}>—</span>
+                    )}
                   </Cell>
                 )}
               </Row>
@@ -108,9 +120,10 @@ export default function Bookings() {
           </div>
           <div className="grid grid-cols-3 gap-4">
             <Field label="Date"><Input type="date" value={form.bookingDate} onChange={set('bookingDate')} /></Field>
-            <Field label="Start time"><Input type="time" step="1" value={form.startTime} onChange={set('startTime')} /></Field>
-            <Field label="End time"><Input type="time" step="1" value={form.endTime} onChange={set('endTime')} /></Field>
+            <Field label="Start time"><Input type="time" step="1" min="08:00:00" max="16:00:00" value={form.startTime} onChange={set('startTime')} /></Field>
+            <Field label="End time"><Input type="time" step="1" min="08:00:00" max="16:00:00" value={form.endTime} onChange={set('endTime')} /></Field>
           </div>
+          <p className="text-xs -mt-2" style={{ color: 'var(--text-faint)' }}>08:00–16:00 (college hours). End time must be after start time.</p>
           <Field label="Purpose"><Input value={form.purpose} onChange={set('purpose')} placeholder="Club meeting" /></Field>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>

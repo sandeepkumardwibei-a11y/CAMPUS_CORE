@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "072e4243-4098-4f2a-a457-3bbdec068d2f",
+    "_postman_id": "777fe2ef-ec5c-42e2-b893-a8f0d2c9e942",
     "name": "CampusCore API",
-    "description": "Complete CampusCore backend API collection (14 modules). Auto-generated from the Spring Boot controllers (CAMPUS-CORE build).\n\n## Getting started\n1. Select the **CampusCore (Local)** environment.\n2. Run **Auth > Login** (or Register) \u2014 the JWT is captured automatically into the `accessToken` collection variable and sent as Bearer auth on every other request.\n3. Adjust path IDs / query params as needed.\n\nBase URL defaults to http://localhost:8300/api (server.port=8300, context-path=/api).",
+    "description": "Complete CampusCore backend API collection (auto-generated from the Spring Boot controllers).\n\nBase path is /api on port 8300. Select the 'CampusCore (Local)' environment before running.\n\n1. Run Auth > Login (or Register) first \u2014 it stores the JWT, userId and role into the environment automatically.\n2. Fill in the resource ID variables (programId, courseId, studentId, examId, etc.) as you create records.\n3. Bearer auth is applied at the collection level using {{accessToken}}; individual auth endpoints override it to no-auth.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -15,58 +15,8 @@
       }
     ]
   },
-  "event": [
-    {
-      "listen": "prerequest",
-      "script": {
-        "type": "text/javascript",
-        "exec": [
-          ""
-        ]
-      }
-    },
-    {
-      "listen": "test",
-      "script": {
-        "type": "text/javascript",
-        "exec": [
-          ""
-        ]
-      }
-    }
-  ],
-  "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:8300/api",
-      "type": "string"
-    },
-    {
-      "key": "accessToken",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "refreshToken",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "userId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "role",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "applicationId",
-      "value": "1",
-      "type": "string"
-    }
-  ],
+  "event": [],
+  "variable": [],
   "item": [
     {
       "name": "Auth",
@@ -91,18 +41,18 @@
                 "register"
               ]
             },
-            "description": "Register a new user. Role is one of APPLICANT, STUDENT, FACULTY, EXAM_CONTROLLER, ACCOUNTS, ADMIN, HOSTEL_ADMIN. Token is auto-saved to collection variables.",
+            "description": "Roles: APPLICANT, STUDENT, FACULTY, EXAM_CONTROLLER, ACCOUNTS, ADMIN, HOSTEL_ADMIN. Password min 8 chars. Saves token to environment.",
+            "auth": {
+              "type": "noauth"
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Ada Admin\",\n  \"email\": \"admin@campus.edu\",\n  \"password\": \"password123\",\n  \"phone\": \"9000000001\",\n  \"role\": \"ADMIN\",\n  \"departmentId\": null\n}",
+              "raw": "{\n  \"name\": \"Admin User\",\n  \"email\": \"admin@campuscore.edu\",\n  \"password\": \"Admin@12345\",\n  \"phone\": \"9876543210\",\n  \"role\": \"ADMIN\",\n  \"departmentId\": null\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
-            "auth": {
-              "type": "noauth"
             }
           },
           "response": [],
@@ -114,12 +64,14 @@
                 "exec": [
                   "const res = pm.response.json();",
                   "if (res && res.data) {",
-                  "  if (res.data.accessToken) pm.collectionVariables.set('accessToken', res.data.accessToken);",
-                  "  if (res.data.refreshToken) pm.collectionVariables.set('refreshToken', res.data.refreshToken);",
-                  "  if (res.data.userId) pm.collectionVariables.set('userId', res.data.userId);",
-                  "  if (res.data.role) pm.collectionVariables.set('role', res.data.role);",
-                  "  console.log('Saved token for', res.data.email, '(' + res.data.role + ')');",
-                  "}"
+                  "    const d = res.data;",
+                  "    if (d.accessToken)  pm.environment.set('accessToken',  d.accessToken);",
+                  "    if (d.refreshToken) pm.environment.set('refreshToken', d.refreshToken);",
+                  "    if (d.userId != null) pm.environment.set('userId', d.userId);",
+                  "    if (d.role)         pm.environment.set('role', d.role);",
+                  "    console.log('Saved token for role:', d.role, 'userId:', d.userId);",
+                  "}",
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
                 ]
               }
             }
@@ -145,18 +97,18 @@
                 "login"
               ]
             },
-            "description": "Log in. Access & refresh tokens are auto-saved to collection variables for all subsequent requests.",
+            "description": "Authenticates and stores accessToken, refreshToken, userId and role into the active environment.",
+            "auth": {
+              "type": "noauth"
+            },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@campus.edu\",\n  \"password\": \"password123\"\n}",
+              "raw": "{\n  \"email\": \"admin@campuscore.edu\",\n  \"password\": \"Admin@12345\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
-            "auth": {
-              "type": "noauth"
             }
           },
           "response": [],
@@ -168,12 +120,14 @@
                 "exec": [
                   "const res = pm.response.json();",
                   "if (res && res.data) {",
-                  "  if (res.data.accessToken) pm.collectionVariables.set('accessToken', res.data.accessToken);",
-                  "  if (res.data.refreshToken) pm.collectionVariables.set('refreshToken', res.data.refreshToken);",
-                  "  if (res.data.userId) pm.collectionVariables.set('userId', res.data.userId);",
-                  "  if (res.data.role) pm.collectionVariables.set('role', res.data.role);",
-                  "  console.log('Saved token for', res.data.email, '(' + res.data.role + ')');",
-                  "}"
+                  "    const d = res.data;",
+                  "    if (d.accessToken)  pm.environment.set('accessToken',  d.accessToken);",
+                  "    if (d.refreshToken) pm.environment.set('refreshToken', d.refreshToken);",
+                  "    if (d.userId != null) pm.environment.set('userId', d.userId);",
+                  "    if (d.role)         pm.environment.set('role', d.role);",
+                  "    console.log('Saved token for role:', d.role, 'userId:', d.userId);",
+                  "}",
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
                 ]
               }
             }
@@ -199,7 +153,10 @@
                 "refresh"
               ]
             },
-            "description": "Exchange a refresh token for a fresh access token.",
+            "description": "Exchanges a valid refresh token for a fresh access token.",
+            "auth": {
+              "type": "noauth"
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
@@ -208,9 +165,6 @@
                   "language": "json"
                 }
               }
-            },
-            "auth": {
-              "type": "noauth"
             }
           },
           "response": [],
@@ -222,19 +176,21 @@
                 "exec": [
                   "const res = pm.response.json();",
                   "if (res && res.data) {",
-                  "  if (res.data.accessToken) pm.collectionVariables.set('accessToken', res.data.accessToken);",
-                  "  if (res.data.refreshToken) pm.collectionVariables.set('refreshToken', res.data.refreshToken);",
-                  "  if (res.data.userId) pm.collectionVariables.set('userId', res.data.userId);",
-                  "  if (res.data.role) pm.collectionVariables.set('role', res.data.role);",
-                  "  console.log('Saved token for', res.data.email, '(' + res.data.role + ')');",
-                  "}"
+                  "    const d = res.data;",
+                  "    if (d.accessToken)  pm.environment.set('accessToken',  d.accessToken);",
+                  "    if (d.refreshToken) pm.environment.set('refreshToken', d.refreshToken);",
+                  "    if (d.userId != null) pm.environment.set('userId', d.userId);",
+                  "    if (d.role)         pm.environment.set('role', d.role);",
+                  "    console.log('Saved token for role:', d.role, 'userId:', d.userId);",
+                  "}",
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
                 ]
               }
             }
           ]
         }
       ],
-      "description": "Authentication. Run Login (or Register) first \u2014 it stores the JWT automatically."
+      "description": "Registration, login and token refresh. Login/Register auto-save the JWT into the environment."
     },
     {
       "name": "Users",
@@ -263,7 +219,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/users?role=STUDENT",
+              "raw": "{{baseUrl}}/users?role=FACULTY",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -273,11 +229,12 @@
               "query": [
                 {
                   "key": "role",
-                  "value": "STUDENT"
+                  "value": "FACULTY",
+                  "disabled": true,
+                  "description": "Optional. STUDENT may only pass FACULTY."
                 }
               ]
-            },
-            "description": "ADMIN/FACULTY/EXAM_CONTROLLER/ACCOUNTS only. Remove the role query param to list everyone."
+            }
           },
           "response": []
         },
@@ -299,21 +256,22 @@
               "query": [
                 {
                   "key": "status",
-                  "value": "ACTIVE"
+                  "value": "ACTIVE",
+                  "description": "ACTIVE, INACTIVE, SUSPENDED, ALUMNI, PENDING"
                 }
               ]
             },
-            "description": "ADMIN only. status = ACTIVE, INACTIVE, SUSPENDED, ALUMNI, PENDING."
+            "description": "ADMIN only. ALUMNI is valid only for STUDENT accounts."
           },
           "response": []
         }
       ]
     },
     {
-      "name": "Admissions",
+      "name": "Departments",
       "item": [
         {
-          "name": "Apply (STAGE 1)",
+          "name": "Create department",
           "request": {
             "method": "POST",
             "header": [
@@ -323,19 +281,18 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/admissions/apply",
+              "raw": "{{baseUrl}}/departments",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "admissions",
-                "apply"
+                "departments"
               ]
             },
-            "description": "APPLICANT only.",
+            "description": "ADMIN only.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"applicantName\": \"Grace Hopper\",\n  \"email\": \"grace@applicant.edu\",\n  \"phone\": \"9000000010\",\n  \"programName\": \"B.Tech Computer Science\",\n  \"departmentName\": \"Computer Science\",\n  \"academicYear\": \"2026-27\",\n  \"percentageSecured\": 88.5\n}",
+              "raw": "{\n  \"departmentName\": \"Computer Science\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -346,295 +303,24 @@
           "response": []
         },
         {
-          "name": "Evaluate (STAGE 2)",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admissions/{{applicationId}}/evaluate?approved=true",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admissions",
-                "{{applicationId}}",
-                "evaluate"
-              ],
-              "query": [
-                {
-                  "key": "approved",
-                  "value": "true"
-                }
-              ]
-            },
-            "description": "ADMIN only. approved=true -> SHORTLISTED, false -> NOT_SHORTLISTED."
-          },
-          "response": []
-        },
-        {
-          "name": "Issue offer (STAGE 3)",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admissions/{{applicationId}}/issue-offer?feeDetailsRef=FEE-2026-SCH-01",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admissions",
-                "{{applicationId}}",
-                "issue-offer"
-              ],
-              "query": [
-                {
-                  "key": "feeDetailsRef",
-                  "value": "FEE-2026-SCH-01"
-                }
-              ]
-            },
-            "description": "ADMIN only. Requires status SHORTLISTED."
-          },
-          "response": []
-        },
-        {
-          "name": "Accept offer (STAGE 4A)",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admissions/{{applicationId}}/accept-offer?fatherName=John Hopper&motherName=Mary Hopper&identificationNumber=ID-123456789&permanentAddress=221B Baker Street, London",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admissions",
-                "{{applicationId}}",
-                "accept-offer"
-              ],
-              "query": [
-                {
-                  "key": "fatherName",
-                  "value": "John Hopper"
-                },
-                {
-                  "key": "motherName",
-                  "value": "Mary Hopper"
-                },
-                {
-                  "key": "identificationNumber",
-                  "value": "ID-123456789"
-                },
-                {
-                  "key": "permanentAddress",
-                  "value": "221B Baker Street, London"
-                }
-              ]
-            },
-            "description": "APPLICANT only. Requires status OFFER_ISSUED. NOTE: permanentAddress is required in this backend version."
-          },
-          "response": []
-        },
-        {
-          "name": "Reject offer (STAGE 4B)",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admissions/{{applicationId}}/reject-offer?reasonMessage=Changed my plans",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admissions",
-                "{{applicationId}}",
-                "reject-offer"
-              ],
-              "query": [
-                {
-                  "key": "reasonMessage",
-                  "value": "Changed my plans"
-                }
-              ]
-            },
-            "description": "APPLICANT only."
-          },
-          "response": []
-        },
-        {
-          "name": "Withdraw application (STAGE 4C)",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admissions/{{applicationId}}/withdraw",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admissions",
-                "{{applicationId}}",
-                "withdraw"
-              ]
-            },
-            "description": "APPLICANT only. Withdraws and clears identifying details."
-          },
-          "response": []
-        },
-        {
-          "name": "Revoke offer - admin (STAGE 4D)",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admissions/{{applicationId}}/revoke-offer?reasonMessage=Seat withdrawn due to audit",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admissions",
-                "{{applicationId}}",
-                "revoke-offer"
-              ],
-              "query": [
-                {
-                  "key": "reasonMessage",
-                  "value": "Seat withdrawn due to audit"
-                }
-              ]
-            },
-            "description": "ADMIN only. Forcefully revokes and anonymizes."
-          },
-          "response": []
-        },
-        {
-          "name": "Verification details (STAGE 5)",
+          "name": "Get all departments",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/admissions/{{applicationId}}/verification-details",
+              "raw": "{{baseUrl}}/departments",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "admissions",
-                "{{applicationId}}",
-                "verification-details"
-              ]
-            },
-            "description": "Admin, or the owning applicant. Requires status OFFER_ACCEPTED."
-          },
-          "response": []
-        },
-        {
-          "name": "Verify documents (STAGE 6)",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admissions/{{applicationId}}/verify-documents?isVerified=true",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admissions",
-                "{{applicationId}}",
-                "verify-documents"
-              ],
-              "query": [
-                {
-                  "key": "isVerified",
-                  "value": "true"
-                }
-              ]
-            },
-            "description": "ADMIN only. Requires status OFFER_ACCEPTED."
-          },
-          "response": []
-        },
-        {
-          "name": "Issue admission letter (STAGE 7)",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admissions/{{applicationId}}/issue-admission-letter",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admissions",
-                "{{applicationId}}",
-                "issue-admission-letter"
-              ]
-            },
-            "description": "ADMIN only. Requires status DOCUMENTS_VERIFIED."
-          },
-          "response": []
-        },
-        {
-          "name": "Finalize enrollment (STAGE 8)",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admissions/{{applicationId}}/finalize-enrollment",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admissions",
-                "{{applicationId}}",
-                "finalize-enrollment"
-              ]
-            },
-            "description": "APPLICANT/STUDENT only. Requires status ADMISSION_LETTER_ISSUED. Upgrades account to STUDENT."
-          },
-          "response": []
-        },
-        {
-          "name": "Get application status",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admissions/{{applicationId}}/status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admissions",
-                "{{applicationId}}",
-                "status"
+                "departments"
               ]
             },
             "description": "Any authenticated user."
           },
           "response": []
-        },
-        {
-          "name": "Get offer details",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admissions/{{applicationId}}/offer-details",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "admissions",
-                "{{applicationId}}",
-                "offer-details"
-              ]
-            },
-            "description": "Admin, or the owning applicant."
-          },
-          "response": []
         }
-      ],
-      "description": "Full admission pipeline. The backend enforces the stage order strictly."
+      ]
     },
     {
       "name": "Programs",
@@ -658,10 +344,10 @@
                 "programs"
               ]
             },
-            "description": "ADMIN only. level = UG, PG, PHD, DIPLOMA.",
+            "description": "ADMIN only.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"programName\": \"B.Tech Computer Science\",\n  \"departmentId\": 1,\n  \"level\": \"UG\",\n  \"durationYears\": 4,\n  \"totalSeats\": 60,\n  \"minimumPercentage\": 60.0,\n  \"courseIds\": [\n    1,\n    2\n  ]\n}",
+              "raw": "{\n  \"programName\": \"B.Tech Computer Science\",\n  \"level\": \"UG\",\n  \"durationYears\": 4,\n  \"totalSeats\": 60,\n  \"minimumPercentage\": 60.0,\n  \"departmentId\": \"{{departmentId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -694,13 +380,13 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/programs/1",
+              "raw": "{{baseUrl}}/programs/{{programId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "programs",
-                "1"
+                "{{programId}}"
               ]
             }
           },
@@ -712,60 +398,24 @@
             "method": "PUT",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/programs/1/status?status=ACTIVE",
+              "raw": "{{baseUrl}}/programs/{{programId}}/status?status=ACTIVE",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "programs",
-                "1",
+                "{{programId}}",
                 "status"
               ],
               "query": [
                 {
                   "key": "status",
-                  "value": "ACTIVE"
+                  "value": "ACTIVE",
+                  "description": "e.g. ACTIVE / INACTIVE"
                 }
               ]
             },
-            "description": "ADMIN only. status = ACTIVE, DISCONTINUED."
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Departments",
-      "item": [
-        {
-          "name": "Create department",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/departments",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "departments"
-              ]
-            },
-            "description": "ADMIN only. This is the only department endpoint the backend exposes.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"departmentName\": \"Computer Science\",\n  \"programId\": 1\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
+            "description": "ADMIN only."
           },
           "response": []
         }
@@ -796,7 +446,7 @@
             "description": "ADMIN only.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"courseName\": \"Data Structures\",\n  \"courseCode\": \"CS201\",\n  \"credits\": 4,\n  \"programId\": 1,\n  \"semester\": 3,\n  \"facultyId\": null,\n  \"maxEnrollment\": 60\n}",
+              "raw": "{\n  \"courseName\": \"Data Structures\",\n  \"courseCode\": \"CS201\",\n  \"credits\": 4,\n  \"programIds\": [\n    \"{{programId}}\"\n  ],\n  \"semester\": 3,\n  \"facultyId\": \"{{facultyId}}\",\n  \"maxEnrollment\": 60\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -829,13 +479,13 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/courses/1",
+              "raw": "{{baseUrl}}/courses/{{courseId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "courses",
-                "1"
+                "{{courseId}}"
               ]
             }
           },
@@ -847,23 +497,24 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/courses/program/1?semester=3",
+              "raw": "{{baseUrl}}/courses/program/{{programId}}?semester=3",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "courses",
                 "program",
-                "1"
+                "{{programId}}"
               ],
               "query": [
                 {
                   "key": "semester",
-                  "value": "3"
+                  "value": "3",
+                  "disabled": true,
+                  "description": "Optional semester filter"
                 }
               ]
-            },
-            "description": "semester query param is optional."
+            }
           },
           "response": []
         },
@@ -873,14 +524,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/courses/faculty/4",
+              "raw": "{{baseUrl}}/courses/faculty/{{facultyId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "courses",
                 "faculty",
-                "4"
+                "{{facultyId}}"
               ]
             }
           },
@@ -892,19 +543,19 @@
             "method": "PUT",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/courses/1/assign-faculty?facultyId=4",
+              "raw": "{{baseUrl}}/courses/{{courseId}}/assign-faculty?facultyId={{facultyId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "courses",
-                "1",
+                "{{courseId}}",
                 "assign-faculty"
               ],
               "query": [
                 {
                   "key": "facultyId",
-                  "value": "4"
+                  "value": "{{facultyId}}"
                 }
               ]
             },
@@ -918,13 +569,13 @@
             "method": "PUT",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/courses/1/status?status=ACTIVE",
+              "raw": "{{baseUrl}}/courses/{{courseId}}/status?status=ACTIVE",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "courses",
-                "1",
+                "{{courseId}}",
                 "status"
               ],
               "query": [
@@ -934,11 +585,459 @@
                 }
               ]
             },
-            "description": "ADMIN only. status = ACTIVE, INACTIVE."
+            "description": "ADMIN only."
           },
           "response": []
         }
       ]
+    },
+    {
+      "name": "Admissions",
+      "item": [
+        {
+          "name": "Get all applications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions"
+              ]
+            },
+            "description": "ADMIN only."
+          },
+          "response": []
+        },
+        {
+          "name": "Apply (Stage 1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admissions/apply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions",
+                "apply"
+              ]
+            },
+            "description": "APPLICANT only.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"applicantName\": \"John Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"9876500000\",\n  \"programName\": \"B.Tech Computer Science\",\n  \"departmentName\": \"Computer Science\",\n  \"academicYear\": \"{{academicYear}}\",\n  \"percentageSecured\": 78.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Evaluate (Stage 2)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admissions/{{applicationId}}/evaluate?approved=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions",
+                "{{applicationId}}",
+                "evaluate"
+              ],
+              "query": [
+                {
+                  "key": "approved",
+                  "value": "true",
+                  "description": "true / false"
+                }
+              ]
+            },
+            "description": "ADMIN only."
+          },
+          "response": []
+        },
+        {
+          "name": "Issue offer (Stage 3)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admissions/{{applicationId}}/issue-offer?feeDetailsRef=FEE-2024-001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions",
+                "{{applicationId}}",
+                "issue-offer"
+              ],
+              "query": [
+                {
+                  "key": "feeDetailsRef",
+                  "value": "FEE-2024-001"
+                }
+              ]
+            },
+            "description": "ADMIN only."
+          },
+          "response": []
+        },
+        {
+          "name": "Accept offer (Stage 4A)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admissions/{{applicationId}}/accept-offer?fatherName=Robert Doe&motherName=Mary Doe&identificationNumber=AADHAAR123456&permanentAddress=12 Main St, Chennai",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions",
+                "{{applicationId}}",
+                "accept-offer"
+              ],
+              "query": [
+                {
+                  "key": "fatherName",
+                  "value": "Robert Doe"
+                },
+                {
+                  "key": "motherName",
+                  "value": "Mary Doe"
+                },
+                {
+                  "key": "identificationNumber",
+                  "value": "AADHAAR123456"
+                },
+                {
+                  "key": "permanentAddress",
+                  "value": "12 Main St, Chennai"
+                }
+              ]
+            },
+            "description": "APPLICANT only."
+          },
+          "response": []
+        },
+        {
+          "name": "Reject offer (Stage 4B)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admissions/{{applicationId}}/reject-offer?reasonMessage=Chose another college",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions",
+                "{{applicationId}}",
+                "reject-offer"
+              ],
+              "query": [
+                {
+                  "key": "reasonMessage",
+                  "value": "Chose another college",
+                  "disabled": true,
+                  "description": "Optional"
+                }
+              ]
+            },
+            "description": "APPLICANT only."
+          },
+          "response": []
+        },
+        {
+          "name": "Withdraw application (Stage 4C)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admissions/{{applicationId}}/withdraw",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions",
+                "{{applicationId}}",
+                "withdraw"
+              ]
+            },
+            "description": "APPLICANT only."
+          },
+          "response": []
+        },
+        {
+          "name": "Revoke offer - admin (Stage 4D)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admissions/{{applicationId}}/revoke-offer?reasonMessage=Seat withdrawn",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions",
+                "{{applicationId}}",
+                "revoke-offer"
+              ],
+              "query": [
+                {
+                  "key": "reasonMessage",
+                  "value": "Seat withdrawn"
+                }
+              ]
+            },
+            "description": "ADMIN only."
+          },
+          "response": []
+        },
+        {
+          "name": "Verification details (Stage 5)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admissions/{{applicationId}}/verification-details",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions",
+                "{{applicationId}}",
+                "verification-details"
+              ]
+            },
+            "description": "Authenticated."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify documents (Stage 6)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admissions/{{applicationId}}/verify-documents?isVerified=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions",
+                "{{applicationId}}",
+                "verify-documents"
+              ],
+              "query": [
+                {
+                  "key": "isVerified",
+                  "value": "true",
+                  "description": "true / false"
+                }
+              ]
+            },
+            "description": "ADMIN only."
+          },
+          "response": []
+        },
+        {
+          "name": "Issue admission letter (Stage 7)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admissions/{{applicationId}}/issue-admission-letter",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions",
+                "{{applicationId}}",
+                "issue-admission-letter"
+              ]
+            },
+            "description": "ADMIN only."
+          },
+          "response": []
+        },
+        {
+          "name": "Finalize enrollment (Stage 8)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admissions/{{applicationId}}/finalize-enrollment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions",
+                "{{applicationId}}",
+                "finalize-enrollment"
+              ]
+            },
+            "description": "APPLICANT / STUDENT."
+          },
+          "response": []
+        },
+        {
+          "name": "Upload document",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admissions/{{applicationId}}/documents?docType=MARKSHEET",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions",
+                "{{applicationId}}",
+                "documents"
+              ],
+              "query": [
+                {
+                  "key": "docType",
+                  "value": "MARKSHEET",
+                  "description": "e.g. MARKSHEET, ID_PROOF, PHOTO"
+                }
+              ]
+            },
+            "description": "Authenticated. Multipart file upload; attach a file in the 'file' field.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "value": "",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get document summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admissions/{{applicationId}}/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions",
+                "{{applicationId}}",
+                "documents"
+              ]
+            },
+            "description": "Authenticated."
+          },
+          "response": []
+        },
+        {
+          "name": "View document",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admissions/{{applicationId}}/documents/MARKSHEET",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions",
+                "{{applicationId}}",
+                "documents",
+                "MARKSHEET"
+              ]
+            },
+            "description": "Authenticated. Replace the last path segment with the docType."
+          },
+          "response": []
+        },
+        {
+          "name": "Get basic info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admissions/{{applicationId}}/basic-info",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions",
+                "{{applicationId}}",
+                "basic-info"
+              ]
+            },
+            "description": "Authenticated."
+          },
+          "response": []
+        },
+        {
+          "name": "Get application status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admissions/{{applicationId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions",
+                "{{applicationId}}",
+                "status"
+              ]
+            },
+            "description": "Authenticated."
+          },
+          "response": []
+        },
+        {
+          "name": "Get offer details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admissions/{{applicationId}}/offer-details",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admissions",
+                "{{applicationId}}",
+                "offer-details"
+              ]
+            },
+            "description": "Authenticated."
+          },
+          "response": []
+        }
+      ],
+      "description": "Full 8-stage admission lifecycle plus document upload/verification."
     },
     {
       "name": "Semester Registrations",
@@ -962,10 +1061,10 @@
                 "registrations"
               ]
             },
-            "description": "ADMIN or STUDENT.",
+            "description": "STUDENT only.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"studentId\": 5,\n  \"programId\": 1,\n  \"academicYear\": \"2026-27\",\n  \"semester\": 3,\n  \"courseIds\": [\n    1,\n    2\n  ]\n}",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"programId\": \"{{programId}}\",\n  \"academicYear\": \"{{academicYear}}\",\n  \"semester\": 3,\n  \"courseIds\": [\n    \"{{courseId}}\"\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -981,13 +1080,13 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/registrations/1",
+              "raw": "{{baseUrl}}/registrations/{{registrationId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "registrations",
-                "1"
+                "{{registrationId}}"
               ]
             }
           },
@@ -999,16 +1098,17 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/registrations/student/5",
+              "raw": "{{baseUrl}}/registrations/student/{{studentId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "registrations",
                 "student",
-                "5"
+                "{{studentId}}"
               ]
-            }
+            },
+            "description": "ADMIN / EXAM_CONTROLLER."
           },
           "response": []
         },
@@ -1026,7 +1126,7 @@
                 "registrations"
               ]
             },
-            "description": "ADMIN or EXAM_CONTROLLER."
+            "description": "ADMIN / EXAM_CONTROLLER."
           },
           "response": []
         },
@@ -1036,27 +1136,17 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/registrations/course/1?academicYear=2026-27&semester=3",
+              "raw": "{{baseUrl}}/registrations/course/{{courseId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "registrations",
                 "course",
-                "1"
-              ],
-              "query": [
-                {
-                  "key": "academicYear",
-                  "value": "2026-27"
-                },
-                {
-                  "key": "semester",
-                  "value": "3"
-                }
+                "{{courseId}}"
               ]
             },
-            "description": "Query params optional. ADMIN/FACULTY/EXAM_CONTROLLER."
+            "description": "ADMIN / FACULTY / EXAM_CONTROLLER."
           },
           "response": []
         },
@@ -1066,17 +1156,17 @@
             "method": "PUT",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/registrations/1/confirm",
+              "raw": "{{baseUrl}}/registrations/{{registrationId}}/confirm",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "registrations",
-                "1",
+                "{{registrationId}}",
                 "confirm"
               ]
             },
-            "description": "ADMIN or EXAM_CONTROLLER."
+            "description": "ADMIN / EXAM_CONTROLLER."
           },
           "response": []
         }
@@ -1105,10 +1195,10 @@
                 "schedule"
               ]
             },
-            "description": "ADMIN or EXAM_CONTROLLER. examType = INTERNAL, END_SEMESTER, PRACTICAL, SUPPLEMENTARY, MID.",
+            "description": "ADMIN / EXAM_CONTROLLER.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"courseId\": 1,\n  \"semester\": 3,\n  \"academicYear\": \"2026-27\",\n  \"examType\": \"INTERNAL\",\n  \"examDate\": \"2026-11-20\",\n  \"startTime\": \"10:00:00\",\n  \"durationMins\": 90,\n  \"venue\": \"Hall A\",\n  \"maxMarks\": 100\n}",
+              "raw": "{\n  \"courseId\": \"{{courseId}}\",\n  \"semester\": 3,\n  \"academicYear\": \"{{academicYear}}\",\n  \"examType\": \"MIDTERM\",\n  \"examDate\": \"2025-04-15\",\n  \"startTime\": \"10:00:00\",\n  \"durationMins\": 120,\n  \"venue\": \"Hall A\",\n  \"maxMarks\": 100\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1124,13 +1214,13 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/exams/1",
+              "raw": "{{baseUrl}}/exams/{{examId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "exams",
-                "1"
+                "{{examId}}"
               ]
             }
           },
@@ -1142,7 +1232,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/exams?academicYear=2026-27&semester=3&page=0&size=20",
+              "raw": "{{baseUrl}}/exams?academicYear={{academicYear}}&semester=3&page=0&size=20",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1152,7 +1242,7 @@
               "query": [
                 {
                   "key": "academicYear",
-                  "value": "2026-27"
+                  "value": "{{academicYear}}"
                 },
                 {
                   "key": "semester",
@@ -1177,19 +1267,19 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/exams/course/1?academicYear=2026-27",
+              "raw": "{{baseUrl}}/exams/course/{{courseId}}?academicYear={{academicYear}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "exams",
                 "course",
-                "1"
+                "{{courseId}}"
               ],
               "query": [
                 {
                   "key": "academicYear",
-                  "value": "2026-27"
+                  "value": "{{academicYear}}"
                 }
               ]
             }
@@ -1207,26 +1297,26 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/exams/1/grades?facultyId=4",
+              "raw": "{{baseUrl}}/exams/{{examId}}/grades?facultyId={{facultyId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "exams",
-                "1",
+                "{{examId}}",
                 "grades"
               ],
               "query": [
                 {
                   "key": "facultyId",
-                  "value": "4"
+                  "value": "{{facultyId}}"
                 }
               ]
             },
-            "description": "ADMIN or FACULTY. Body is a JSON array of {studentId, marksObtained}.",
+            "description": "ADMIN / FACULTY. Body is a JSON array of grade entries.",
             "body": {
               "mode": "raw",
-              "raw": "[\n  {\n    \"studentId\": 5,\n    \"marksObtained\": 78\n  },\n  {\n    \"studentId\": 6,\n    \"marksObtained\": 84\n  }\n]",
+              "raw": "[\n  {\n    \"studentId\": \"{{studentId}}\",\n    \"marksObtained\": 82\n  }\n]",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1237,22 +1327,42 @@
           "response": []
         },
         {
-          "name": "Publish grades",
+          "name": "Mark exam conducted",
           "request": {
             "method": "PUT",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/exams/1/publish",
+              "raw": "{{baseUrl}}/exams/{{examId}}/conduct",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "exams",
-                "1",
+                "{{examId}}",
+                "conduct"
+              ]
+            },
+            "description": "ADMIN / EXAM_CONTROLLER. Moves SCHEDULED -> CONDUCTED."
+          },
+          "response": []
+        },
+        {
+          "name": "Publish grades",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/exams/{{examId}}/publish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exams",
+                "{{examId}}",
                 "publish"
               ]
             },
-            "description": "ADMIN or EXAM_CONTROLLER."
+            "description": "ADMIN / EXAM_CONTROLLER."
           },
           "response": []
         },
@@ -1262,17 +1372,17 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/exams/1/grades",
+              "raw": "{{baseUrl}}/exams/{{examId}}/grades",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "exams",
-                "1",
+                "{{examId}}",
                 "grades"
               ]
             },
-            "description": "ADMIN, EXAM_CONTROLLER, or FACULTY. Students cannot fetch raw class grades."
+            "description": "ADMIN / EXAM_CONTROLLER / FACULTY."
           },
           "response": []
         },
@@ -1282,18 +1392,18 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/exams/student/5/grades",
+              "raw": "{{baseUrl}}/exams/student/{{studentId}}/grades",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "exams",
                 "student",
-                "5",
+                "{{studentId}}",
                 "grades"
               ]
             },
-            "description": "ADMIN/EXAM_CONTROLLER or the student themselves."
+            "description": "ADMIN / EXAM_CONTROLLER or the owning student."
           },
           "response": []
         },
@@ -1303,20 +1413,20 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/exams/student/5/compile-result?academicYear=2026-27&semester=3",
+              "raw": "{{baseUrl}}/exams/student/{{studentId}}/compile-result?academicYear={{academicYear}}&semester=3",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "exams",
                 "student",
-                "5",
+                "{{studentId}}",
                 "compile-result"
               ],
               "query": [
                 {
                   "key": "academicYear",
-                  "value": "2026-27"
+                  "value": "{{academicYear}}"
                 },
                 {
                   "key": "semester",
@@ -1324,7 +1434,7 @@
                 }
               ]
             },
-            "description": "ADMIN or EXAM_CONTROLLER."
+            "description": "ADMIN / EXAM_CONTROLLER."
           },
           "response": []
         },
@@ -1334,18 +1444,18 @@
             "method": "PUT",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/exams/registrations/1/confirm",
+              "raw": "{{baseUrl}}/exams/registrations/{{registrationId}}/confirm",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "exams",
                 "registrations",
-                "1",
+                "{{registrationId}}",
                 "confirm"
               ]
             },
-            "description": "ADMIN or EXAM_CONTROLLER. Duplicate of the registrations confirm route."
+            "description": "ADMIN / EXAM_CONTROLLER."
           },
           "response": []
         },
@@ -1355,18 +1465,18 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/exams/student/5/results",
+              "raw": "{{baseUrl}}/exams/student/{{studentId}}/results",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "exams",
                 "student",
-                "5",
+                "{{studentId}}",
                 "results"
               ]
             },
-            "description": "ADMIN/EXAM_CONTROLLER or the student themselves."
+            "description": "ADMIN / EXAM_CONTROLLER or the owning student."
           },
           "response": []
         }
@@ -1395,10 +1505,10 @@
                 "mark"
               ]
             },
-            "description": "ADMIN or FACULTY. status = PRESENT, ABSENT, LATE, OFFICIAL_DUTY.",
+            "description": "ADMIN / FACULTY. status: PRESENT / ABSENT / LATE / OFFICIAL_DUTY.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"courseId\": 1,\n  \"lectureDate\": \"2026-11-15\",\n  \"records\": [\n    {\n      \"studentId\": 5,\n      \"status\": \"PRESENT\"\n    },\n    {\n      \"studentId\": 6,\n      \"status\": \"ABSENT\"\n    }\n  ]\n}",
+              "raw": "{\n  \"courseId\": \"{{courseId}}\",\n  \"lectureDate\": \"2025-03-01\",\n  \"records\": [\n    {\n      \"studentId\": \"{{studentId}}\",\n      \"status\": \"PRESENT\"\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1414,23 +1524,23 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/attendance/student/5?academicYear=2026-27",
+              "raw": "{{baseUrl}}/attendance/student/{{studentId}}?academicYear={{academicYear}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "attendance",
                 "student",
-                "5"
+                "{{studentId}}"
               ],
               "query": [
                 {
                   "key": "academicYear",
-                  "value": "2026-27"
+                  "value": "{{academicYear}}"
                 }
               ]
             },
-            "description": "ADMIN/FACULTY/EXAM_CONTROLLER, or the student viewing their own (studentId must match logged-in user)."
+            "description": "ADMIN / FACULTY / EXAM_CONTROLLER or the owning student."
           },
           "response": []
         },
@@ -1440,18 +1550,18 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/attendance/course/1/shortage",
+              "raw": "{{baseUrl}}/attendance/course/{{courseId}}/shortage",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "attendance",
                 "course",
-                "1",
+                "{{courseId}}",
                 "shortage"
               ]
             },
-            "description": "ADMIN or FACULTY."
+            "description": "ADMIN / FACULTY."
           },
           "response": []
         },
@@ -1476,10 +1586,10 @@
                 "mark"
               ]
             },
-            "description": "ADMIN only. status = PRESENT / ABSENT.",
+            "description": "ADMIN only. status: PRESENT / ABSENT.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"facultyName\": \"Dr. Alan Turing\",\n  \"date\": \"2026-11-15\",\n  \"status\": \"PRESENT\"\n}",
+              "raw": "{\n  \"facultyName\": \"Dr. Smith\",\n  \"date\": \"2025-03-01\",\n  \"status\": \"PRESENT\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1495,17 +1605,17 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/attendance/faculty/4",
+              "raw": "{{baseUrl}}/attendance/faculty/{{facultyId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "attendance",
                 "faculty",
-                "4"
+                "{{facultyId}}"
               ]
             },
-            "description": "ADMIN, or the faculty viewing their own records (facultyId must match logged-in user)."
+            "description": "ADMIN or the owning faculty member."
           },
           "response": []
         }
@@ -1534,10 +1644,10 @@
                 "invoices"
               ]
             },
-            "description": "ADMIN or ACCOUNTS.",
+            "description": "ADMIN / ACCOUNTS.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"studentId\": 5,\n  \"academicYear\": \"2026-27\",\n  \"semester\": 3,\n  \"tuitionFee\": 50000,\n  \"hostelFee\": 20000,\n  \"libraryFee\": 2000,\n  \"labFee\": 3000,\n  \"activityFee\": 1000,\n  \"scholarshipAdjusted\": 5000,\n  \"dueDate\": \"2026-12-01\"\n}",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"academicYear\": \"{{academicYear}}\",\n  \"semester\": 3,\n  \"tuitionFee\": 50000,\n  \"hostelFee\": 20000,\n  \"libraryFee\": 2000,\n  \"labFee\": 3000,\n  \"activityFee\": 1000,\n  \"scholarshipAdjusted\": 5000,\n  \"dueDate\": \"2025-05-30\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1567,10 +1677,9 @@
                 "payments"
               ]
             },
-            "description": "mode = CASH, CARD, UPI, NET_BANKING, BANK_TRANSFER, DD.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"invoiceId\": 1,\n  \"paidAmount\": 71000,\n  \"mode\": \"UPI\",\n  \"referenceNo\": \"TXN-98765\"\n}",
+              "raw": "{\n  \"invoiceId\": \"{{invoiceId}}\",\n  \"paidAmount\": 71000,\n  \"mode\": \"ONLINE\",\n  \"referenceNo\": \"TXN123456\",\n  \"cashBreakdownNote\": null\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1586,14 +1695,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/fees/student/5/invoices",
+              "raw": "{{baseUrl}}/fees/student/{{studentId}}/invoices",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "fees",
                 "student",
-                "5",
+                "{{studentId}}",
                 "invoices"
               ]
             }
@@ -1606,14 +1715,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/fees/invoices/1/payments",
+              "raw": "{{baseUrl}}/fees/invoices/{{invoiceId}}/payments",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "fees",
                 "invoices",
-                "1",
+                "{{invoiceId}}",
                 "payments"
               ]
             }
@@ -1626,7 +1735,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/fees/invoices?status=GENERATED&page=0&size=20",
+              "raw": "{{baseUrl}}/fees/invoices?status=PENDING&page=0&size=20",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1637,7 +1746,8 @@
               "query": [
                 {
                   "key": "status",
-                  "value": "GENERATED"
+                  "value": "PENDING",
+                  "description": "e.g. PENDING / PAID / PARTIAL"
                 },
                 {
                   "key": "page",
@@ -1649,7 +1759,155 @@
                 }
               ]
             },
-            "description": "ADMIN or ACCOUNTS. status = GENERATED, PAID, PARTIALLY_PAID, OVERDUE, WAIVED."
+            "description": "ADMIN / ACCOUNTS."
+          },
+          "response": []
+        },
+        {
+          "name": "Submit payment proof",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fees/payments/proof?invoiceId={{invoiceId}}&paidAmount=71000&mode=NEFT&referenceNo=NEFT987654",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fees",
+                "payments",
+                "proof"
+              ],
+              "query": [
+                {
+                  "key": "invoiceId",
+                  "value": "{{invoiceId}}"
+                },
+                {
+                  "key": "paidAmount",
+                  "value": "71000"
+                },
+                {
+                  "key": "mode",
+                  "value": "NEFT"
+                },
+                {
+                  "key": "referenceNo",
+                  "value": "NEFT987654",
+                  "disabled": true,
+                  "description": "Optional"
+                }
+              ]
+            },
+            "description": "Student self-service. Multipart upload; attach proof in 'file'.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "value": "",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get pending proof payments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fees/payments/pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fees",
+                "payments",
+                "pending"
+              ]
+            },
+            "description": "ADMIN / ACCOUNTS."
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm proof payment",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fees/payments/{{paymentId}}/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fees",
+                "payments",
+                "{{paymentId}}",
+                "confirm"
+              ]
+            },
+            "description": "ADMIN / ACCOUNTS."
+          },
+          "response": []
+        },
+        {
+          "name": "Reject proof payment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/fees/payments/{{paymentId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fees",
+                "payments",
+                "{{paymentId}}",
+                "reject"
+              ]
+            },
+            "description": "ADMIN / ACCOUNTS. Body optional.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Blurry document\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "View payment proof",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fees/payments/{{paymentId}}/proof",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "fees",
+                "payments",
+                "{{paymentId}}",
+                "proof"
+              ]
+            },
+            "description": "Owning student or ADMIN / ACCOUNTS. Returns the proof image inline."
           },
           "response": []
         }
@@ -1678,10 +1936,10 @@
                 "rooms"
               ]
             },
-            "description": "HOSTEL_ADMIN only. roomType = SINGLE, DOUBLE, TRIPLE.",
+            "description": "HOSTEL_ADMIN / ADMIN.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"hostelBlock\": \"Block A\",\n  \"roomNumber\": \"204\",\n  \"capacity\": 2,\n  \"roomType\": \"DOUBLE\"\n}",
+              "raw": "{\n  \"hostelBlock\": \"A\",\n  \"roomNumber\": \"A-101\",\n  \"capacity\": 3,\n  \"roomType\": \"TRIPLE\",\n  \"status\": \"AVAILABLE\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1702,20 +1960,20 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/hostel/applications/5",
+              "raw": "{{baseUrl}}/hostel/applications/{{studentId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "hostel",
                 "applications",
-                "5"
+                "{{studentId}}"
               ]
             },
-            "description": "STUDENT only. Path is /applications/{studentId}.",
+            "description": "STUDENT only. roomType: SINGLE / DOUBLE / TRIPLE.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"reason\": \"Home is too far from campus\",\n  \"roomType\": \"DOUBLE\"\n}",
+              "raw": "{\n  \"reason\": \"Home town is far\",\n  \"roomType\": \"DOUBLE\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1731,18 +1989,18 @@
             "method": "PUT",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/hostel/applications/1/approve",
+              "raw": "{{baseUrl}}/hostel/applications/{{applicationId}}/approve",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "hostel",
                 "applications",
-                "1",
+                "{{applicationId}}",
                 "approve"
               ]
             },
-            "description": "HOSTEL_ADMIN only."
+            "description": "HOSTEL_ADMIN / ADMIN."
           },
           "response": []
         },
@@ -1750,20 +2008,34 @@
           "name": "Reject application",
           "request": {
             "method": "PUT",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/hostel/applications/1/reject",
+              "raw": "{{baseUrl}}/hostel/applications/{{applicationId}}/reject",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "hostel",
                 "applications",
-                "1",
+                "{{applicationId}}",
                 "reject"
               ]
             },
-            "description": "HOSTEL_ADMIN only."
+            "description": "HOSTEL_ADMIN / ADMIN. Body optional.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"No rooms available\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           },
           "response": []
         },
@@ -1778,18 +2050,18 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/hostel/applications/1/pay",
+              "raw": "{{baseUrl}}/hostel/applications/{{applicationId}}/pay",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "hostel",
                 "applications",
-                "1",
+                "{{applicationId}}",
                 "pay"
               ]
             },
-            "description": "STUDENT only. paymentMode = CASH, ONLINE, CARD, NEFT.",
+            "description": "STUDENT only. paymentMode: CASH / ONLINE / CARD / NEFT.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"paymentMode\": \"ONLINE\"\n}",
@@ -1799,6 +2071,44 @@
                 }
               }
             }
+          },
+          "response": []
+        },
+        {
+          "name": "Get all applications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/hostel/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hostel",
+                "applications"
+              ]
+            },
+            "description": "HOSTEL_ADMIN / ADMIN."
+          },
+          "response": []
+        },
+        {
+          "name": "Get all allotments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/hostel/allotments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hostel",
+                "allotments"
+              ]
+            },
+            "description": "HOSTEL_ADMIN / ADMIN."
           },
           "response": []
         },
@@ -1817,7 +2127,7 @@
                 "rooms"
               ]
             },
-            "description": "HOSTEL_ADMIN only."
+            "description": "HOSTEL_ADMIN / ADMIN."
           },
           "response": []
         },
@@ -1837,7 +2147,7 @@
                 "available"
               ]
             },
-            "description": "HOSTEL_ADMIN or STUDENT."
+            "description": "HOSTEL_ADMIN / STUDENT / ADMIN."
           },
           "response": []
         },
@@ -1861,10 +2171,10 @@
                 "allotments"
               ]
             },
-            "description": "HOSTEL_ADMIN only.",
+            "description": "HOSTEL_ADMIN / ADMIN.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"studentId\": 5,\n  \"roomId\": 1,\n  \"academicYear\": \"2026-27\",\n  \"checkinDate\": \"2026-12-05\"\n}",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"roomId\": \"{{roomId}}\",\n  \"academicYear\": \"{{academicYear}}\",\n  \"checkinDate\": \"2025-06-01\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1880,18 +2190,18 @@
             "method": "PUT",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/hostel/allotments/1/vacate",
+              "raw": "{{baseUrl}}/hostel/allotments/{{allotmentId}}/vacate",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "hostel",
                 "allotments",
-                "1",
+                "{{allotmentId}}",
                 "vacate"
               ]
             },
-            "description": "HOSTEL_ADMIN only."
+            "description": "HOSTEL_ADMIN / ADMIN."
           },
           "response": []
         },
@@ -1901,18 +2211,18 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/hostel/student/5/allotments",
+              "raw": "{{baseUrl}}/hostel/student/{{studentId}}/allotments",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "hostel",
                 "student",
-                "5",
+                "{{studentId}}",
                 "allotments"
               ]
             },
-            "description": "HOSTEL_ADMIN or STUDENT."
+            "description": "HOSTEL_ADMIN / STUDENT / ADMIN."
           },
           "response": []
         }
@@ -1932,7 +2242,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/bookings?userId=5",
+              "raw": "{{baseUrl}}/bookings?userId={{userId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1942,14 +2252,13 @@
               "query": [
                 {
                   "key": "userId",
-                  "value": "5"
+                  "value": "{{userId}}"
                 }
               ]
             },
-            "description": "Any authenticated user. userId is a query param.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"facilityName\": \"Seminar Hall B\",\n  \"bookingDate\": \"2026-11-25\",\n  \"startTime\": \"14:00:00\",\n  \"endTime\": \"16:00:00\",\n  \"purpose\": \"Club meeting\"\n}",
+              "raw": "{\n  \"facilityName\": \"Auditorium\",\n  \"bookingDate\": \"2025-04-20\",\n  \"startTime\": \"09:00:00\",\n  \"endTime\": \"11:00:00\",\n  \"purpose\": \"Seminar\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1965,14 +2274,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/bookings/user/5",
+              "raw": "{{baseUrl}}/bookings/user/{{userId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "bookings",
                 "user",
-                "5"
+                "{{userId}}"
               ]
             }
           },
@@ -2002,23 +2311,24 @@
             "method": "PUT",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/bookings/1/status?status=APPROVED",
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}/status?status=APPROVED",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "bookings",
-                "1",
+                "{{bookingId}}",
                 "status"
               ],
               "query": [
                 {
                   "key": "status",
-                  "value": "APPROVED"
+                  "value": "APPROVED",
+                  "description": "e.g. APPROVED / REJECTED"
                 }
               ]
             },
-            "description": "ADMIN only. status = REQUESTED, APPROVED, REJECTED, COMPLETED."
+            "description": "ADMIN only."
           },
           "response": []
         }
@@ -2033,7 +2343,7 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/notifications/send?userId=5&message=Welcome to CampusCore!&category=INFO",
+              "raw": "{{baseUrl}}/notifications/send?userId={{userId}}&message=Your fee is due&category=FEE",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -2044,19 +2354,18 @@
               "query": [
                 {
                   "key": "userId",
-                  "value": "5"
+                  "value": "{{userId}}"
                 },
                 {
                   "key": "message",
-                  "value": "Welcome to CampusCore!"
+                  "value": "Your fee is due"
                 },
                 {
                   "key": "category",
-                  "value": "INFO"
+                  "value": "FEE"
                 }
               ]
-            },
-            "description": "category = ADMISSIONS, ATTENDANCE, EXAMINATION, FEE, HOSTEL, ACADEMIC, SYSTEM, INFO, ALERT. All params are query params."
+            }
           },
           "response": []
         },
@@ -2066,14 +2375,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/notifications/user/5?page=0&size=20",
+              "raw": "{{baseUrl}}/notifications/user/{{userId}}?page=0&size=20",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "notifications",
                 "user",
-                "5"
+                "{{userId}}"
               ],
               "query": [
                 {
@@ -2086,7 +2395,7 @@
                 }
               ]
             },
-            "description": "ADMIN or the user themselves."
+            "description": "ADMIN or the owning user."
           },
           "response": []
         },
@@ -2096,14 +2405,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/notifications/user/5/unread-count",
+              "raw": "{{baseUrl}}/notifications/user/{{userId}}/unread-count",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "notifications",
                 "user",
-                "5",
+                "{{userId}}",
                 "unread-count"
               ]
             }
@@ -2116,13 +2425,13 @@
             "method": "PUT",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/notifications/1/read",
+              "raw": "{{baseUrl}}/notifications/{{notificationId}}/read",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "notifications",
-                "1",
+                "{{notificationId}}",
                 "read"
               ]
             },
@@ -2136,14 +2445,14 @@
             "method": "PUT",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/notifications/user/5/read-all",
+              "raw": "{{baseUrl}}/notifications/user/{{userId}}/read-all",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "notifications",
                 "user",
-                "5",
+                "{{userId}}",
                 "read-all"
               ]
             }
@@ -2174,10 +2483,10 @@
                 "timetable"
               ]
             },
-            "description": "ADMIN only. Times are HH:mm:ss strings. Service validates course existence, semester match, and schedule overlaps.",
+            "description": "ADMIN only.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"courseId\": 1,\n  \"dayOfWeek\": \"MONDAY\",\n  \"startTime\": \"10:00:00\",\n  \"endTime\": \"11:00:00\",\n  \"venue\": \"Room 101\",\n  \"academicYear\": \"2026-27\",\n  \"semester\": 3\n}",
+              "raw": "{\n  \"courseId\": \"{{courseId}}\",\n  \"programId\": \"{{programId}}\",\n  \"dayOfWeek\": \"MONDAY\",\n  \"startTime\": \"09:00:00\",\n  \"endTime\": \"10:00:00\",\n  \"venue\": \"Room 101\",\n  \"academicYear\": \"{{academicYear}}\",\n  \"semester\": 3\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2201,7 +2510,7 @@
                 "timetable"
               ]
             },
-            "description": "Any authenticated user."
+            "description": "ADMIN / FACULTY."
           },
           "response": []
         },
@@ -2211,43 +2520,43 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/timetable/course/1",
+              "raw": "{{baseUrl}}/timetable/course/{{courseId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "timetable",
                 "course",
-                "1"
+                "{{courseId}}"
               ]
             },
-            "description": "ADMIN or FACULTY."
+            "description": "ADMIN / FACULTY / STUDENT."
           },
           "response": []
         },
         {
-          "name": "Get student schedule (plain text)",
+          "name": "Get student schedule",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/timetable/student/5?programId=1&academicYear=2026-27&semester=3",
+              "raw": "{{baseUrl}}/timetable/student/{{studentId}}?programId={{programId}}&academicYear={{academicYear}}&semester=3",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "timetable",
                 "student",
-                "5"
+                "{{studentId}}"
               ],
               "query": [
                 {
                   "key": "programId",
-                  "value": "1"
+                  "value": "{{programId}}"
                 },
                 {
                   "key": "academicYear",
-                  "value": "2026-27"
+                  "value": "{{academicYear}}"
                 },
                 {
                   "key": "semester",
@@ -2255,7 +2564,131 @@
                 }
               ]
             },
-            "description": "ADMIN/FACULTY/STUDENT. NOTE: this endpoint returns a plain-text ASCII table (text/plain), not JSON."
+            "description": "ADMIN / FACULTY / STUDENT."
+          },
+          "response": []
+        },
+        {
+          "name": "Get my schedule",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/timetable/my-schedule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "timetable",
+                "my-schedule"
+              ]
+            },
+            "description": "STUDENT self-service (auto-detected from registration)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get my teaching",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/timetable/my-teaching",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "timetable",
+                "my-teaching"
+              ]
+            },
+            "description": "FACULTY self-service (auto-detected from assigned courses)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Academic Standing",
+      "item": [
+        {
+          "name": "Get all academic standing",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/academic-standing",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "academic-standing"
+              ]
+            },
+            "description": "ADMIN / FACULTY."
+          },
+          "response": []
+        },
+        {
+          "name": "Get academic standing for student",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/academic-standing/student/{{studentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "academic-standing",
+                "student",
+                "{{studentId}}"
+              ]
+            },
+            "description": "ADMIN / FACULTY or the owning student."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Logs",
+      "item": [
+        {
+          "name": "Get audit logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/logs/audit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "logs",
+                "audit"
+              ]
+            },
+            "description": "ADMIN only."
+          },
+          "response": []
+        },
+        {
+          "name": "Get module logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/logs/module",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "logs",
+                "module"
+              ]
+            },
+            "description": "ADMIN only."
           },
           "response": []
         }

@@ -48,6 +48,34 @@ public class DepartmentService {
         return toResponse(department);
     }
 
+    @Transactional
+    public DepartmentDto.Response updateStatus(Long id, String status) {
+        log.info("Entering updateStatus routine for departmentId: {} -> {}", id, status);
+
+        Department department = departmentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Department not found with id: " + id));
+
+        // RULE: only two valid states — ACTIVE or DISCONTINUED.
+        String target = status == null ? "" : status.trim().toUpperCase();
+        if (!target.equals("ACTIVE") && !target.equals("DISCONTINUED")) {
+            throw new ResourceNotFoundException(
+                    "Invalid department status '" + status + "'. Allowed values: ACTIVE, DISCONTINUED.");
+        }
+
+        department.setStatus(target);
+        departmentRepository.save(department);
+
+        eventPublisher.publishEvent(new NotificationDto.Event(
+            null,
+            String.format("Academic Restructure: Department '%s' is now marked %s.",
+                department.getDepartmentName(), target),
+            NotificationCategory.DEPARTMENT
+        ));
+
+        log.info("Successfully updated department {} status to {}", id, target);
+        return toResponse(department);
+    }
+
     @Transactional(readOnly = true)
     public java.util.List<DepartmentDto.Response> getAll() {
         log.info("Fetching all departments");

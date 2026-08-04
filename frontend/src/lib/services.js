@@ -57,6 +57,7 @@ export const ProgramApi = {
 export const DepartmentApi = {
   create: (body) => p('/departments', body),
   all: () => g('/departments'),
+  updateStatus: (departmentId, status) => u(`/departments/${departmentId}/status`, null, { status }),
 }
 
 // ---------------- Courses (7) ----------------
@@ -131,6 +132,7 @@ export const HostelApi = {
   allot: (body) => p('/hostel/allotments', body),
   vacate: (allotmentId) => u(`/hostel/allotments/${allotmentId}/vacate`),
   studentAllotments: (studentId) => g(`/hostel/student/${studentId}/allotments`),
+  studentApplications: (studentId) => g(`/hostel/student/${studentId}/applications`),
   allApplications: () => g('/hostel/applications'),
   allAllotments: () => g('/hostel/allotments'),
 }

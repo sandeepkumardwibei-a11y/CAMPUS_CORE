@@ -5,6 +5,7 @@ import Layout from './components/Layout'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import EnrollmentSuccess from './pages/EnrollmentSuccess'
 import Dashboard from './pages/Dashboard'
 import Users from './pages/Users'
 import Admissions from './pages/admissions/Admissions'
@@ -33,6 +34,7 @@ export default function App() {
       <Route path="/welcome" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/enrolled" element={<EnrollmentSuccess />} />
 
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route path="dashboard" element={<Dashboard />} />

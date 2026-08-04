@@ -31,6 +31,12 @@ public class HostelApplication {
     @Column(name = "room_type", nullable = false, length = 20)
     private HostelRoom.RoomType roomType;
 
+    // Which year of the degree this application is for (1 = 1st year, 2 = 2nd year, ...).
+    // Used by the re-apply pricing rule: re-applying for the SAME year you're already
+    // staying is free; any other year re-apply is charged the full room fee.
+    @Column(name = "study_year")
+    private Integer studyYear;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ApplicationStatus status;

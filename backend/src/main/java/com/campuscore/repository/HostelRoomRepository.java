@@ -14,4 +14,7 @@ public interface HostelRoomRepository extends JpaRepository<HostelRoom, Long> {
     List<HostelRoom> findByStatus(RoomStatus status);
     Page<HostelRoom> findByHostelBlock(String hostelBlock, Pageable pageable);
     long countByStatus(RoomStatus status);
+
+    // Used to reject duplicate rooms with a friendly message (block + room number must be unique).
+    boolean existsByHostelBlockIgnoreCaseAndRoomNumberIgnoreCase(String hostelBlock, String roomNumber);
 }

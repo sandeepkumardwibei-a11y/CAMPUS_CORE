@@ -11,6 +11,7 @@ import {
 } from '../../components/ui'
 import { FileSpreadsheet } from 'lucide-react'
 import { FacultySelect } from '../../components/ui/FacultySelect'
+import { StudentSelect } from '../../components/ui/StudentSelect'
 import { can } from '../../lib/constants'
 import { useAuth } from '../../context/AuthContext'
 
@@ -120,13 +121,19 @@ export default function ExamDetail() {
               <Field label="Faculty" className="mb-4"><FacultySelect value={facultyId} onChange={(id) => setFacultyId(id ?? '')} /></Field>
               <div className="space-y-2 mb-4">
                 <div className="flex gap-2 px-1">
-                  <span className="text-xs font-semibold flex-1" style={{ color: 'var(--text-faint)' }}>Student ID</span>
+                  <span className="text-xs font-semibold flex-1" style={{ color: 'var(--text-faint)' }}>Student</span>
                   <span className="text-xs font-semibold w-28" style={{ color: 'var(--text-faint)' }}>Marks</span>
                   <span className="w-9 shrink-0" />
                 </div>
                 {records.map((r, i) => (
                   <div key={i} className="flex gap-2 items-center">
-                    <input type="number" min={1} max={999999} className="field flex-2 min-w-5" value={r.studentId} onChange={(e) => upd(i, 'studentId', e.target.value)}  />
+                    <div className="flex-1 min-w-5">
+                      <StudentSelect
+                        courseId={exam?.courseId}
+                        value={r.studentId}
+                        onChange={(id) => upd(i, 'studentId', id ?? '')}
+                      />
+                    </div>
                     <input type="number" min={0} max={exam?.maxMarks ?? undefined} step="0.01" className="field w-28 shrink-10" value={r.marksObtained} onChange={(e) => upd(i, 'marksObtained', e.target.value)} placeholder={exam?.maxMarks != null ? `0–${exam.maxMarks}` : 'Marks'} />
                     <button onClick={() => setRecords((rs) => rs.filter((_, idx) => idx !== i))} className="p-2 rounded-lg hover:bg-rose-500/10 text-rose-500 shrink-0"><Trash2 size={16} /></button>
                   </div>

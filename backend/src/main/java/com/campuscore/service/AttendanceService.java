@@ -153,16 +153,32 @@ public class AttendanceService {
 
         List<AttendanceRecord> records = recordRepository.findByStudentUserIdAndCourseCourseId(studentId, courseId);
         int totalLectures = records.size();
-        int attendedLectures = (int) records.stream()
-                .filter(r -> r.getStatus() == AttendanceRecord.AttendanceStatus.PRESENT ||
-                        r.getStatus() == AttendanceRecord.AttendanceStatus.LATE ||
-                        r.getStatus() == AttendanceRecord.AttendanceStatus.OFFICIAL_DUTY)
-                .count();
 
-        // FIXED: Restored your exact working calculation logic
+        // Break the records down by status.
+        int presentCount = (int) records.stream().filter(r -> r.getStatus() == AttendanceRecord.AttendanceStatus.PRESENT).count();
+        int lateCount = (int) records.stream().filter(r -> r.getStatus() == AttendanceRecord.AttendanceStatus.LATE).count();
+        int officialDutyCount = (int) records.stream().filter(r -> r.getStatus() == AttendanceRecord.AttendanceStatus.OFFICIAL_DUTY).count();
+
+        // Base attendance = PRESENT + LATE (physically present).
+        int baseAttended = presentCount + lateCount;
+        BigDecimal basePercent = totalLectures > 0
+                ? BigDecimal.valueOf(baseAttended).multiply(BigDecimal.valueOf(100))
+                    .divide(BigDecimal.valueOf(totalLectures), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        // RULE: OFFICIAL_DUTY only "adds up" (condones) when the student would otherwise be
+        // in shortage (< 75%). In that case OD days are added on top to lift the percentage.
+        // If the student is already at/above 75% without OD, OD is not counted (base stands).
+        int attendedLectures = baseAttended;
+        boolean officialDutyApplied = false;
+        if (basePercent.compareTo(BigDecimal.valueOf(75.0)) < 0 && officialDutyCount > 0) {
+            attendedLectures = baseAttended + officialDutyCount;
+            officialDutyApplied = true;
+        }
+
         BigDecimal percentage = totalLectures > 0
                 ? BigDecimal.valueOf(attendedLectures).multiply(BigDecimal.valueOf(100))
-                .divide(BigDecimal.valueOf(totalLectures), 2, RoundingMode.HALF_UP)
+                    .divide(BigDecimal.valueOf(totalLectures), 2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
 
         // Catch unregistered students cleanly to prevent unintended crashes
@@ -181,6 +197,9 @@ public class AttendanceService {
         summary.setAttendancePercent(percentage);
         summary.setShortageFlag(percentage.compareTo(BigDecimal.valueOf(75.0)) < 0);
         summaryRepository.save(summary);
+
+        log.debug("Summary for student {} course {}: present={}, late={}, OD={}, base%={}, final%={}, ODapplied={}",
+                studentId, courseId, presentCount, lateCount, officialDutyCount, basePercent, percentage, officialDutyApplied);
     }
 
     @Transactional
@@ -211,8 +230,9 @@ public class AttendanceService {
         }
 
         String targetStatus = request.getStatus().trim().toUpperCase();
-        if (!targetStatus.equals("PRESENT") && !targetStatus.equals("ABSENT")) {
-            throw new AttendanceException("Validation Failed: Invalid status structure '" + request.getStatus() + "' for Faculty. Allowed values are: PRESENT, ABSENT.");
+        java.util.List<String> allowedFacultyStatuses = java.util.List.of("PRESENT", "ABSENT", "LATE", "OFFICIAL_DUTY");
+        if (!allowedFacultyStatuses.contains(targetStatus)) {
+            throw new AttendanceException("Validation Failed: Invalid status structure '" + request.getStatus() + "' for Faculty. Allowed values are: PRESENT, ABSENT, LATE, OFFICIAL_DUTY.");
         }
 
         FacultyAttendanceRecord record = FacultyAttendanceRecord.builder()
@@ -317,6 +337,22 @@ public class AttendanceService {
     }
 
     private AttendanceDto.SummaryResponse toSummaryResponse(AttendanceSummary s) {
+        // Re-read the raw records to expose a per-status breakdown for the UI/pie chart.
+        List<AttendanceRecord> recs = recordRepository
+                .findByStudentUserIdAndCourseCourseId(s.getStudent().getUserId(), s.getCourse().getCourseId());
+        int presentCount = (int) recs.stream().filter(r -> r.getStatus() == AttendanceRecord.AttendanceStatus.PRESENT).count();
+        int lateCount = (int) recs.stream().filter(r -> r.getStatus() == AttendanceRecord.AttendanceStatus.LATE).count();
+        int absentCount = (int) recs.stream().filter(r -> r.getStatus() == AttendanceRecord.AttendanceStatus.ABSENT).count();
+        int officialDutyCount = (int) recs.stream().filter(r -> r.getStatus() == AttendanceRecord.AttendanceStatus.OFFICIAL_DUTY).count();
+
+        // Whether OD was counted toward attendance depends on the shortage rule:
+        // base (present+late) below 75% and at least one OD day.
+        int total = recs.size();
+        int base = presentCount + lateCount;
+        boolean odApplied = total > 0
+                && officialDutyCount > 0
+                && (base * 100.0 / total) < 75.0;
+
         return AttendanceDto.SummaryResponse.builder()
                 .summaryId(s.getSummaryId())
                 .studentId(s.getStudent().getUserId())
@@ -329,6 +365,11 @@ public class AttendanceService {
                 .attendedLectures(s.getAttendedLectures())
                 .attendancePercent(s.getAttendancePercent())
                 .shortageFlag(s.getShortageFlag())
+                .presentCount(presentCount)
+                .lateCount(lateCount)
+                .absentCount(absentCount)
+                .officialDutyCount(officialDutyCount)
+                .officialDutyApplied(odApplied)
                 .build();
     }
 

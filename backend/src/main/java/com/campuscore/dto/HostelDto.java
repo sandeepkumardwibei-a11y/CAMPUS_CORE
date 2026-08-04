@@ -28,6 +28,9 @@ public class HostelDto {
         private Integer availableBeds;
         private String roomType;
         private String status;
+        // Names of the students currently staying in this room (ACTIVE allotments).
+        @Builder.Default
+        private java.util.List<String> occupants = new java.util.ArrayList<>();
     }
 
     // ==========================
@@ -44,6 +47,9 @@ public class HostelDto {
 
         @NotBlank(message = "Room type is required (SINGLE, DOUBLE, TRIPLE)")
         private String roomType;
+
+        // 1 = 1st year, 2 = 2nd year, ... Optional; defaults to 1 if omitted.
+        private Integer studyYear;
     }
 
     @Data
@@ -56,6 +62,7 @@ public class HostelDto {
         private String studentName;
         private String reason;
         private String roomType;
+        private Integer studyYear;
         private LocalDate applicationDate;
         private String status;
         private Double hostelFee;

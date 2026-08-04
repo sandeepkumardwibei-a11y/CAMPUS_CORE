@@ -41,4 +41,20 @@ public class DepartmentController {
         log.info("Successfully processed getAllDepartments endpoint request, count: {}", response.size());
         return ResponseEntity.ok(ApiResponse.success(response, "Fetched all departments successfully"));
     }
+
+    // UPDATE DEPARTMENT STATUS (ACTIVE <-> DISCONTINUED)
+    // Admin-only: mirrors the program status toggle. The target status is passed
+    // as a query param, e.g. PUT /departments/1/status?status=DISCONTINUED
+    @PutMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')") // Encapsulation rule: Strict Admin access restriction
+    public ResponseEntity<ApiResponse<DepartmentDto.Response>> updateStatus(
+            @PathVariable Long id,
+            @RequestParam String status) {
+        log.info("Processing updateStatus endpoint request for departmentId: {} with target status: {}", id, status);
+
+        DepartmentDto.Response response = departmentService.updateStatus(id, status);
+
+        log.info("Successfully processed updateStatus endpoint request for departmentId: {}", id);
+        return ResponseEntity.ok(ApiResponse.success(response, "Department status updated successfully"));
+    }
 }

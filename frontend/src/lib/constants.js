@@ -89,6 +89,7 @@ export const PERMS = {
   'prog.read': 'AUTH',
   // Departments
   'dept.create': ['ADMIN'],
+  'dept.updateStatus': ['ADMIN'],
   // Courses
   'course.create': ['ADMIN'],
   'course.assignFaculty': ['ADMIN'],

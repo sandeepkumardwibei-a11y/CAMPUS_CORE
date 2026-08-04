@@ -71,6 +71,25 @@ public class HostelService {
     @Transactional
     public HostelDto.RoomResponse createRoom(HostelDto.RoomResponse request) {
         log.info("Creating a new hostel room. Block: {}, Room Number: {}", request.getHostelBlock(), request.getRoomNumber());
+
+        // VALIDATION: block and room number are mandatory and must not be blank.
+        String block = request.getHostelBlock() != null ? request.getHostelBlock().trim() : "";
+        String roomNo = request.getRoomNumber() != null ? request.getRoomNumber().trim() : "";
+        if (block.isEmpty()) {
+            throw new HostelException("Hostel block is required — please enter a block name (e.g. A-Block).");
+        }
+        if (roomNo.isEmpty()) {
+            throw new HostelException("Room number is required — please enter a room number (e.g. 101).");
+        }
+        if (request.getRoomType() == null || request.getRoomType().isBlank()) {
+            throw new HostelException("Room type is required (SINGLE, DOUBLE, TRIPLE).");
+        }
+
+        // VALIDATION: reject duplicates with a clear, friendly message.
+        if (roomRepository.existsByHostelBlockIgnoreCaseAndRoomNumberIgnoreCase(block, roomNo)) {
+            throw new HostelException("Room " + roomNo + " already exists in " + block + ". Please use a different block or room number.");
+        }
+
         int finalCapacity = request.getCapacity() != null ? request.getCapacity() : 2;
         int finalOccupiedCount = request.getOccupiedCount() != null ? request.getOccupiedCount() : 0;
 
@@ -78,12 +97,19 @@ public class HostelService {
                 ? HostelRoom.RoomStatus.OCCUPIED
                 : HostelRoom.RoomStatus.AVAILABLE;
 
+        HostelRoom.RoomType parsedType;
+        try {
+            parsedType = HostelRoom.RoomType.valueOf(request.getRoomType().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new HostelException("Invalid room type '" + request.getRoomType() + "'. Valid types: SINGLE, DOUBLE, TRIPLE.");
+        }
+
         HostelRoom room = HostelRoom.builder()
-                .hostelBlock(request.getHostelBlock())
-                .roomNumber(request.getRoomNumber())
+                .hostelBlock(block)
+                .roomNumber(roomNo)
                 .capacity(finalCapacity)
                 .occupiedCount(finalOccupiedCount)
-                .roomType(HostelRoom.RoomType.valueOf(request.getRoomType().toUpperCase()))
+                .roomType(parsedType)
                 .status(finalStatus)
                 .build();
 
@@ -114,10 +140,25 @@ public class HostelService {
             throw new HostelException("Invalid room configuration selected. Valid types: SINGLE, DOUBLE, TRIPLE.");
         }
 
+        // RULE: a student cannot stack a second PENDING application on top of one still
+        // awaiting the hostel admin's decision. The UI shows an "under process" popup,
+        // and this guard enforces the same rule server-side.
+        boolean hasPending = hostelApplicationRepository
+                .findByStudentUserIdAndStatus(studentId, HostelApplication.ApplicationStatus.PENDING)
+                .isPresent();
+        if (hasPending) {
+            log.warn("Apply blocked: student {} already has a PENDING hostel application", studentId);
+            throw new HostelException("Your previous hostel application is still under process. Please wait until the hostel admin confirms it.");
+        }
+
+        // Default the study year to 1 (1st year) when the caller doesn't specify it.
+        Integer studyYear = request.getStudyYear() != null ? request.getStudyYear() : 1;
+
         HostelApplication application = HostelApplication.builder()
                 .student(student)
                 .reason(request.getReason())
                 .roomType(selectedType)
+                .studyYear(studyYear)
                 .applicationDate(LocalDate.now())
                 .status(HostelApplication.ApplicationStatus.PENDING)
                 .paymentStatus("PENDING")
@@ -158,19 +199,56 @@ public class HostelService {
         }
 
         //  PRICING ENGINE MAPPER
+        // Base full fee by room type.
+        double fullFee;
         switch (application.getRoomType()) {
-            case SINGLE -> application.setHostelFee(75000.0);
-            case DOUBLE -> application.setHostelFee(50000.0);
-            case TRIPLE -> application.setHostelFee(40000.0);
+            case SINGLE -> fullFee = 75000.0;
+            case DOUBLE -> fullFee = 50000.0;
+            case TRIPLE -> fullFee = 40000.0;
             default -> {
                 log.error("Unhandled pricing rule for Room Type: {}", application.getRoomType());
                 throw new HostelException("Unhandled pricing rule for Room Type: " + application.getRoomType());
             }
         }
 
+        // RE-APPLY PRICING RULE:
+        // If the student is already staying (has an ACTIVE allotment) and is re-applying
+        // for the SAME year of study they're currently in, the re-application is FREE
+        // (fee 0, auto-marked PAID). Re-applying for any OTHER year is charged the full fee.
+        Long studentId = application.getStudent().getUserId();
+        boolean isStayingNow = allotmentRepository.findByStudentUserId(studentId).stream()
+                .anyMatch(a -> a.getStatus() == HostelAllotment.AllotmentStatus.ACTIVE);
+
+        boolean freeReapply = false;
+        if (isStayingNow) {
+            // The year they're currently staying for = studyYear of their latest APPROVED
+            // application other than this one.
+            Integer stayingYear = hostelApplicationRepository.findByStudentUserId(studentId).stream()
+                    .filter(a -> !a.getApplicationId().equals(application.getApplicationId()))
+                    .filter(a -> a.getStatus() == HostelApplication.ApplicationStatus.APPROVED)
+                    .map(HostelApplication::getStudyYear)
+                    .filter(java.util.Objects::nonNull)
+                    .reduce((first, second) -> second) // last one
+                    .orElse(null);
+
+            Integer newYear = application.getStudyYear();
+            if (stayingYear != null && newYear != null && stayingYear.equals(newYear)) {
+                freeReapply = true;
+            }
+        }
+
+        if (freeReapply) {
+            application.setHostelFee(0.0);
+            application.setPaymentStatus("PAID"); // nothing to collect — mark settled
+            log.info("Re-apply for same study year {} while staying — fee waived for application ID: {}",
+                    application.getStudyYear(), applicationId);
+        } else {
+            application.setHostelFee(fullFee);
+            application.setPaymentStatus("PENDING");
+        }
+
         application.setStatus(HostelApplication.ApplicationStatus.APPROVED);
         application.setHostelAdminId(hostelAdminId);
-        application.setPaymentStatus("PENDING");
 
         hostelApplicationRepository.save(application);
 
@@ -263,6 +341,16 @@ public class HostelService {
         if (room.getRoomType() != application.getRoomType()) {
             log.warn("Allotment failed: Room layout category mismatch. Requested: {}, Room Type: {}", application.getRoomType(), room.getRoomType());
             throw new HostelException("Mismatched allocation assignment category: Chosen room type does not match requested layout pattern.");
+        }
+
+        // RULE: a student may hold only ONE active room at a time. If they already have
+        // an ACTIVE allotment (any room, any year), the admin must VACATE it before
+        // assigning a new one — we never double-assign.
+        boolean alreadyStaying = allotmentRepository.findByStudentUserId(request.getStudentId()).stream()
+                .anyMatch(a -> a.getStatus() == HostelAllotment.AllotmentStatus.ACTIVE);
+        if (alreadyStaying) {
+            log.warn("Allotment failed: student ID: {} already has an ACTIVE allotment", request.getStudentId());
+            throw new HostelException("This student is already staying in a room. Please vacate their current room before assigning a new one.");
         }
 
         if (allotmentRepository.findByStudentUserIdAndAcademicYear(request.getStudentId(), request.getAcademicYear()).isPresent()) {
@@ -363,6 +451,16 @@ public class HostelService {
                 .collect(Collectors.toList());
     }
 
+    // A student's OWN applications (or admin/hostel-admin viewing a specific student).
+    @Transactional(readOnly = true)
+    public List<HostelDto.HostelApplicationResponse> getStudentApplications(Long studentId) {
+        log.debug("Fetching hostel applications for studentId: {}", studentId);
+        verifyStudentDataOwnership(studentId);
+        return hostelApplicationRepository.findByStudentUserId(studentId).stream()
+                .map(this::toApplicationResponse)
+                .collect(Collectors.toList());
+    }
+
     @Transactional(readOnly = true)
     public List<HostelDto.AllotmentResponse> getAllAllotments() {
         log.debug("Fetching all hostel allotments for the admin dashboard");
@@ -414,6 +512,13 @@ public class HostelService {
     }
 
     private HostelDto.RoomResponse toRoomResponse(HostelRoom r) {
+        // Look up who is currently staying in this room (ACTIVE allotments) and list their names.
+        java.util.List<String> occupantNames = allotmentRepository
+                .findByRoomRoomIdAndStatus(r.getRoomId(), HostelAllotment.AllotmentStatus.ACTIVE)
+                .stream()
+                .map(a -> a.getStudent().getName())
+                .collect(Collectors.toList());
+
         return HostelDto.RoomResponse.builder()
                 .roomId(r.getRoomId())
                 .hostelBlock(r.getHostelBlock())
@@ -423,6 +528,7 @@ public class HostelService {
                 .availableBeds(r.getCapacity() - r.getOccupiedCount())
                 .roomType(r.getRoomType().name())
                 .status(r.getStatus().name())
+                .occupants(occupantNames)
                 .build();
     }
 
@@ -448,6 +554,7 @@ public class HostelService {
                 .studentName(a.getStudent().getName())
                 .reason(a.getReason())
                 .roomType(a.getRoomType() != null ? a.getRoomType().name() : null)
+                .studyYear(a.getStudyYear())
                 .applicationDate(a.getApplicationDate())
                 .status(a.getStatus().name())
                 .hostelFee(a.getHostelFee())

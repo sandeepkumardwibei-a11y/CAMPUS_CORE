@@ -20,6 +20,6 @@ public class FacultyAttendanceRecord {
     @Column(nullable = false)
     private LocalDate date;
 
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false, length = 20)
     private String status;
 }

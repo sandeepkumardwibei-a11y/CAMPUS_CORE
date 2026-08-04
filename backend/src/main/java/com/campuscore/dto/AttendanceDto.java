@@ -47,6 +47,13 @@ public class AttendanceDto {
         private Integer attendedLectures;
         private java.math.BigDecimal attendancePercent;
         private Boolean shortageFlag;
+        // Per-status breakdown (used by the pie chart on the frontend).
+        private Integer presentCount;
+        private Integer lateCount;
+        private Integer absentCount;
+        private Integer officialDutyCount;
+        // True when OFFICIAL_DUTY was added to lift the student out of a shortage.
+        private Boolean officialDutyApplied;
     }
 
 

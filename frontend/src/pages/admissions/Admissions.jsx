@@ -13,22 +13,44 @@ import { useAuth } from '../../context/AuthContext'
 const empty = { applicantName: '', email: '', phone: '', programName: '', departmentName: '', academicYear: '2026-27', percentageSecured: '' }
 // Strips anything that isn't a digit, and caps at 10 digits.
 const onlyDigits = (v) => v.replace(/\D/g, '').slice(0, 10)
- 
+
+// The applicant's submitted application id is remembered per-user (survives logout),
+// so after they apply we can hide the form and default the tracking box to their id.
+function admissionKey(userId) { return `cc-admission-${userId}` }
+function loadMyAdmissionId(userId) {
+  if (!userId) return ''
+  try { return localStorage.getItem(admissionKey(userId)) || '' } catch { return '' }
+}
+export function saveMyAdmissionId(userId, applicationId) {
+  if (!userId || !applicationId) return
+  try { localStorage.setItem(admissionKey(userId), String(applicationId)) } catch { /* ignore */ }
+}
+export function clearMyAdmissionId(userId) {
+  if (!userId) return
+  try { localStorage.removeItem(admissionKey(userId)) } catch { /* ignore */ }
+}
+
 export default function Admissions() {
   const toast = useToast()
   const navigate = useNavigate()
   const { user } = useAuth()
   const role = user?.role
   const canApply = can(role, 'adm.apply')
- 
+
+  // If this applicant has already applied, we remember their application id and
+  // switch the page from "apply" mode to "track" mode.
+  const [myAppId, setMyAppId] = useState(() => loadMyAdmissionId(user?.userId))
+  const alreadyApplied = !!myAppId
+  const showApplyCard = canApply && !alreadyApplied
+
   const [form, setForm] = useState(empty)
   const [saving, setSaving] = useState(false)
   const [lookupId, setLookupId] = useState('')
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
 
   // Program & Department options for the applicant dropdowns (only fetched when the form is shown)
-  const { data: programsData } = useAsync(() => (canApply ? ProgramApi.all() : Promise.resolve([])), [canApply])
-  const { data: departmentsData } = useAsync(() => (canApply ? DepartmentApi.all() : Promise.resolve([])), [canApply])
+  const { data: programsData } = useAsync(() => (showApplyCard ? ProgramApi.all() : Promise.resolve([])), [showApplyCard])
+  const { data: departmentsData } = useAsync(() => (showApplyCard ? DepartmentApi.all() : Promise.resolve([])), [showApplyCard])
   const allPrograms = asArray(programsData)
   const departmentOptions = asArray(departmentsData).map((d) => d.departmentName).filter(Boolean)
 
@@ -38,17 +60,18 @@ export default function Admissions() {
     .filter((p) => !selectedDept || p.departmentId === selectedDept.departmentId)
     .map((p) => p.programName)
     .filter(Boolean)
- 
-  // Lock the input value automatically if the logged-in user is a student
+
+  // Default the tracking box: for an applicant who already applied, use their own
+  // remembered application id; for a STUDENT, use their personal id (legacy behaviour).
   useEffect(() => {
-    if (role === 'STUDENT') {
+    if (alreadyApplied) {
+      setLookupId(String(myAppId))
+    } else if (role === 'STUDENT') {
       const personalId = user?.applicationId || user?.id || user?.userId || ''
-      if (personalId) {
-        setLookupId(String(personalId))
-      }
+      if (personalId) setLookupId(String(personalId))
     }
-  }, [role, user])
- 
+  }, [role, user, alreadyApplied, myAppId])
+
   const apply = async (e) => {
     e.preventDefault()
     setSaving(true)
@@ -57,38 +80,51 @@ export default function Admissions() {
       const id = res?.id ?? res?.applicationId
       toast.success(id ? `Application #${id} submitted` : 'Application submitted')
       setForm(empty)
-      if (id) navigate(`/admissions/${id}`)
+      if (id) {
+        // Remember it so the apply card disappears and tracking is pre-filled.
+        saveMyAdmissionId(user?.userId, id)
+        setMyAppId(String(id))
+        navigate(`/admissions/${id}`)
+      }
     } catch (err) { toast.error(apiMessage(err)) } finally { setSaving(false) }
   }
- 
+
   // Secure navigation tracking gateway
   const handleTrackApplication = () => {
+    // An applicant who already applied can only open their own remembered application.
+    if (alreadyApplied) {
+      navigate(`/admissions/${myAppId}`)
+      return
+    }
     if (role === 'STUDENT') {
       const personalId = String(user?.applicationId || user?.id || user?.userId || '')
-     
       if (personalId && String(lookupId) !== personalId) {
         toast.error("Access denied: You are only permitted to track your own application record.")
         setLookupId(personalId) // Force reset the field back to their actual ID
         return
       }
     }
-   
     navigate(`/admissions/${lookupId}`)
   }
- 
+
+  // Whether the tracking id field should be locked to the user's own id.
+  const lockTrackingId = alreadyApplied || role === 'STUDENT'
+
   return (
     <div>
       <PageHeader icon={GraduationCap} title="Admissions"
-        subtitle={canApply ? 'Submit an application, then walk it through the pipeline.' : 'Look up an application and manage its admission workflow.'} />
- 
+        subtitle={showApplyCard ? 'Submit an application, then walk it through the pipeline.'
+          : alreadyApplied ? 'You have applied — track your application below.'
+          : 'Look up an application and manage its admission workflow.'} />
+
       {/* Pipeline preview — the signature element */}
       <Card className="p-6 mb-6">
         <p className="label mb-3">The admission journey</p>
         <Stepper steps={ADMISSION_PIPELINE} current="SUBMITTED" />
       </Card>
- 
-      <div className={`grid gap-6 ${canApply ? 'lg:grid-cols-3' : 'lg:grid-cols-1'}`}>
-        {canApply && (
+
+      <div className={`grid gap-6 ${showApplyCard ? 'lg:grid-cols-3' : 'lg:grid-cols-1'}`}>
+        {showApplyCard && (
           <Card className="p-6 lg:col-span-2">
             <h3 className="font-display font-semibold mb-4" style={{ color: 'var(--text)' }}>New application</h3>
             <form onSubmit={apply} className="space-y-4">
@@ -119,11 +155,13 @@ export default function Admissions() {
             </form>
           </Card>
         )}
- 
+
         <Card className="p-6 h-fit">
           <h3 className="font-display font-semibold mb-4" style={{ color: 'var(--text)' }}>Track an application</h3>
           <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-            {role === 'STUDENT' ? 'Your assigned personal tracking code reference.' : 'Enter an application ID to view its status and run workflow actions.'}
+            {alreadyApplied ? 'Your submitted application ID — track its progress through the pipeline.'
+              : role === 'STUDENT' ? 'Your assigned personal tracking code reference.'
+              : 'Enter an application ID to view its status and run workflow actions.'}
           </p>
           <Field label="Application ID">
             <Input
@@ -133,7 +171,7 @@ export default function Admissions() {
               value={lookupId}
               onChange={(e) => setLookupId(e.target.value)}
               placeholder="1"
-              disabled={role === 'STUDENT'} // Disables input tampering completely for students
+              disabled={lockTrackingId} // Locked to their own id once they've applied / for students
             />
           </Field>
           <Button className="mt-4 w-full" variant="subtle" disabled={!lookupId} onClick={handleTrackApplication}>

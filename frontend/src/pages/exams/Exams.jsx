@@ -13,6 +13,7 @@ import {
   Modal, Field, Input, Select,
 } from '../../components/ui'
 import { Tabs } from '../../components/ui/extras'
+import { StudentSelect } from '../../components/ui/StudentSelect'
 
 const empty = { courseId: '', semester: 3, academicYear: '2026-27', examType: 'INTERNAL', examDate: '', startTime: '', durationMins: 90, venue: '', maxMarks: 100 }
 
@@ -193,7 +194,7 @@ function StudentResults({ toast }) {
   return (
     <>
       <Card className="p-4 mb-5 flex flex-wrap items-end gap-3">
-        <div className="w-40"><span className="label">Student ID</span><Input type="number" min={1} max={999999} value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="5" /></div>
+        <div className="w-64"><span className="label">Student</span><StudentSelect value={studentId} onChange={(id) => setStudentId(id ?? '')} /></div>
         <Button onClick={load} loading={loading}><Search size={16} /> Load</Button>
         <div className="flex-1" />
         <div className="w-28"><span className="label">Year</span><Input value={compile.academicYear} onChange={(e) => setCompile({ ...compile, academicYear: e.target.value })} /></div>

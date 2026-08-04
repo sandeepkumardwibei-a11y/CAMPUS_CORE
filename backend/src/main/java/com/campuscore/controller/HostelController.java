@@ -115,6 +115,17 @@ public class HostelController {
         return ResponseEntity.ok(ApiResponse.success(response, "Fetched all hostel applications"));
     }
 
+    // STUDENT: view ONLY their own hostel applications (admin/hostel-admin may also pass a studentId).
+    @GetMapping("/student/{studentId}/applications")
+    @PreAuthorize("hasAnyRole('HOSTEL_ADMIN','STUDENT','ADMIN')")
+    public ResponseEntity<ApiResponse<List<HostelDto.HostelApplicationResponse>>> getStudentApplications(
+            @PathVariable Long studentId) {
+        log.info("Processing getStudentApplications endpoint request for studentId: {}", studentId);
+        List<HostelDto.HostelApplicationResponse> response = hostelService.getStudentApplications(studentId);
+        log.info("Successfully processed getStudentApplications endpoint request for studentId: {}", studentId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Fetched student hostel applications"));
+    }
+
     // ADMIN / HOSTEL ADMIN: list every hostel allotment (who is staying where)
     @GetMapping("/allotments")
     @PreAuthorize("hasAnyRole('HOSTEL_ADMIN','ADMIN')")

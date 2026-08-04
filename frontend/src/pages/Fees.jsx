@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Wallet, Search, Receipt, Plus, IndianRupee, CreditCard, Upload, ShieldCheck, X as XIcon, Eye } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Wallet, Search, Receipt, Plus, IndianRupee, CreditCard, Upload, ShieldCheck, X as XIcon, Eye, AlertCircle, Clock } from 'lucide-react'
 import { FeeApi } from '../lib/services'
 import api from '../lib/api'
 import { asArray, useAsync } from '../lib/hooks'
@@ -12,6 +12,7 @@ import {
   Modal, Field, Input, Select,
 } from '../components/ui'
 import { Tabs } from '../components/ui/extras'
+import { StudentSelect } from '../components/ui/StudentSelect'
 
 const money = (n) => (n == null ? '—' : `₹${Number(n).toLocaleString('en-IN')}`)
 const invEmpty = { studentId: '', academicYear: '2026-27', semester: 3, tuitionFee: 0, libraryFee: 0, labFee: 0, activityFee: 0, scholarshipAdjusted: 0, dueDate: '' }
@@ -53,6 +54,31 @@ export default function Fees() {
   const [saving, setSaving] = useState(false)
   const [payments, setPayments] = useState(null)
 
+  // Dashboard counts (ADMIN / ACCOUNTS): how many invoices are unpaid vs partially paid.
+  const [counts, setCounts] = useState({ generated: null, partial: null })
+  const loadCounts = async () => {
+    try {
+      // The status endpoint returns a Spring Page — read totalElements for the count.
+      const [gen, par] = await Promise.all([
+        FeeApi.invoicesByStatus({ status: 'GENERATED', page: 0, size: 1 }).catch(() => null),
+        FeeApi.invoicesByStatus({ status: 'PARTIALLY_PAID', page: 0, size: 1 }).catch(() => null),
+      ])
+      const total = (r) => (r && typeof r === 'object' && 'totalElements' in r ? r.totalElements : asArray(r).length)
+      setCounts({ generated: total(gen), partial: total(par) })
+    } catch { /* non-fatal */ }
+  }
+
+  // A summary card click jumps to the By-status tab filtered on that status.
+  const openStatus = (targetStatus) => {
+    setTab('status')
+    setStatus(targetStatus)
+    setLoading(true)
+    FeeApi.invoicesByStatus({ status: targetStatus, page: 0, size: 50 })
+      .then((r) => setRows(asArray(r)))
+      .catch((e) => toast.error(apiMessage(e)))
+      .finally(() => setLoading(false))
+  }
+
   const loadStatus = async () => {
     setLoading(true)
     try { setRows(asArray(await FeeApi.invoicesByStatus({ status, page: 0, size: 50 }))) }
@@ -83,7 +109,14 @@ export default function Fees() {
   const afterPaymentAction = () => {
     setPayModal(false); setPayingInvoice(null)
     if (tab === 'status') loadStatus(); else if (studentId) loadStudent()
+    if (canStatus) loadCounts()
   }
+
+  // Load the dashboard counts once for ADMIN / ACCOUNTS.
+  useEffect(() => {
+    if (canStatus) loadCounts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canStatus])
 
   return (
     <div>
@@ -93,6 +126,31 @@ export default function Fees() {
           {canPay && <Button variant="outline" onClick={() => { setPayingInvoice(null); setPayModal(true) }}><IndianRupee size={16} /> Record payment</Button>}
           {canManage && <Button onClick={() => setInvModal(true)}><Plus size={16} /> Generate invoice</Button>}
         </>} />
+
+      {canStatus && (
+        <div className="grid sm:grid-cols-2 gap-4 mb-6">
+          <button onClick={() => openStatus('GENERATED')} className="text-left">
+            <Card className="p-5 flex items-center gap-4 hover:ring-2 hover:ring-rose-500/40 transition cursor-pointer">
+              <div className="w-12 h-12 rounded-xl grid place-items-center bg-rose-500/12 text-rose-500 shrink-0"><AlertCircle size={22} /></div>
+              <div>
+                <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>{counts.generated ?? '—'}</p>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Students not paid (invoice generated)</p>
+                <p className="text-xs mt-0.5 text-rose-500">Click to view →</p>
+              </div>
+            </Card>
+          </button>
+          <button onClick={() => openStatus('PARTIALLY_PAID')} className="text-left">
+            <Card className="p-5 flex items-center gap-4 hover:ring-2 hover:ring-amber-500/40 transition cursor-pointer">
+              <div className="w-12 h-12 rounded-xl grid place-items-center bg-amber-500/12 text-amber-500 shrink-0"><Clock size={22} /></div>
+              <div>
+                <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>{counts.partial ?? '—'}</p>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Students partially paid</p>
+                <p className="text-xs mt-0.5 text-amber-500">Click to view →</p>
+              </div>
+            </Card>
+          </button>
+        </div>
+      )}
 
       <Tabs active={tab} onChange={(t) => { setTab(t); setRows(null) }} tabs={[
         ...(canStatus ? [{ key: 'status', label: 'By status' }] : []),
@@ -109,7 +167,9 @@ export default function Fees() {
               <div className="w-44"><span className="label">Invoice status</span><Select options={INVOICE_STATUS} value={status} onChange={(e) => setStatus(e.target.value)} /></div>
               <Button onClick={loadStatus} loading={loading}><Search size={16} /> Load invoices</Button>
             </> : <>
-              <div className="w-40"><span className="label">Student ID</span><Input type="number" min={1} max={999999} value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="5" /></div>
+              {canStatus
+                ? <div className="w-64"><span className="label">Student</span><StudentSelect value={studentId} onChange={(id) => setStudentId(id ?? '')} /></div>
+                : <div className="w-40"><span className="label">Student ID</span><Input type="number" min={1} max={999999} value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="5" /></div>}
               <Button onClick={loadStudent} loading={loading}><Search size={16} /> Load invoices</Button>
             </>}
           </Card>

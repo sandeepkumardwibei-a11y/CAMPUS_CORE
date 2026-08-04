@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { BedDouble, Plus, Search, Check, X, IndianRupee, LogOut, CreditCard, ShieldCheck } from 'lucide-react'
 import { HostelApi } from '../lib/services'
 import { useAsync, asArray } from '../lib/hooks'
@@ -37,15 +37,24 @@ function Rooms({ toast, role }) {
   const [onlyAvail, setOnlyAvail] = useState(false)
   const { data, loading, reload } = useAsync(() => (onlyAvail ? HostelApi.availableRooms() : HostelApi.rooms()), [onlyAvail])
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ hostelBlock: '', roomNumber: '', capacity: 2, roomType: 'DOUBLE' })
+  const [form, setForm] = useState({ hostelBlock: '', roomNumber: '', capacity: 1, roomType: 'SINGLE' })
   const [saving, setSaving] = useState(false)
   const rooms = asArray(data)
 
+  // Default bed capacity per room type — SINGLE=1, DOUBLE=2, TRIPLE=3.
+  // Changing the Room type dropdown updates Capacity to match immediately; the
+  // admin can still override the number afterwards if a room is a special case.
+  const DEFAULT_CAPACITY = { SINGLE: 1, DOUBLE: 2, TRIPLE: 3 }
+  const setRoomType = (roomType) => setForm((f) => ({ ...f, roomType, capacity: DEFAULT_CAPACITY[roomType] ?? f.capacity }))
+
   const create = async () => {
+    // Client-side guard: block and room number are required (backend also enforces this).
+    if (!form.hostelBlock.trim()) return toast.error('Hostel block is required.')
+    if (!form.roomNumber.trim()) return toast.error('Room number is required.')
     setSaving(true)
     try {
-      await HostelApi.createRoom({ ...form, capacity: Number(form.capacity) })
-      toast.success('Room created'); setOpen(false); setForm({ hostelBlock: '', roomNumber: '', capacity: 2, roomType: 'DOUBLE' }); reload()
+      await HostelApi.createRoom({ ...form, hostelBlock: form.hostelBlock.trim(), roomNumber: form.roomNumber.trim(), capacity: Number(form.capacity) })
+      toast.success('Room created'); setOpen(false); setForm({ hostelBlock: '', roomNumber: '', capacity: 1, roomType: 'SINGLE' }); reload()
     } catch (e) { toast.error(apiMessage(e)) } finally { setSaving(false) }
   }
 
@@ -60,12 +69,17 @@ function Rooms({ toast, role }) {
       </div>
       <Card className="p-4">
         {loading ? <Spinner /> : rooms.length === 0 ? <EmptyState icon={BedDouble} title="No rooms" hint="Create rooms to start allotting." />
-          : <Table head={['ID', 'Block', 'Room', 'Type', 'Capacity', 'Occupied', 'Status']}>
+          : <Table head={['ID', 'Block', 'Room', 'Type', 'Capacity', 'Occupied', 'Occupants', 'Status']}>
               {rooms.map((r) => (
                 <Row key={r.roomId}>
                   <Cell mono>{r.roomId}</Cell><Cell>{r.hostelBlock}</Cell><Cell mono>{r.roomNumber}</Cell>
                   <Cell><Badge value={r.roomType} /></Cell><Cell>{r.capacity}</Cell>
                   <Cell>{r.occupiedCount ?? r.occupied ?? r.currentOccupancy ?? 0}</Cell>
+                  <Cell>
+                    {r.occupants && r.occupants.length > 0
+                      ? <span className="text-sm">{r.occupants.join(', ')}</span>
+                      : <span className="text-xs" style={{ color: 'var(--text-faint)' }}>—</span>}
+                  </Cell>
                   <Cell><Badge value={r.status} /></Cell>
                 </Row>
               ))}
@@ -74,12 +88,12 @@ function Rooms({ toast, role }) {
       <Modal open={open} onClose={() => setOpen(false)} title="Create room">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Hostel block"><Input value={form.hostelBlock} onChange={(e) => setForm({ ...form, hostelBlock: e.target.value })} placeholder="Block A" /></Field>
-            <Field label="Room number"><Input value={form.roomNumber} onChange={(e) => setForm({ ...form, roomNumber: e.target.value })} placeholder="204" /></Field>
+            <Field label="Hostel block"><Input required value={form.hostelBlock} onChange={(e) => setForm({ ...form, hostelBlock: e.target.value })} placeholder="Block A" /></Field>
+            <Field label="Room number"><Input required value={form.roomNumber} onChange={(e) => setForm({ ...form, roomNumber: e.target.value })} placeholder="204" /></Field>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Capacity"><Input type="number" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} /></Field>
-            <Field label="Room type"><Select options={ROOM_TYPES} value={form.roomType} onChange={(e) => setForm({ ...form, roomType: e.target.value })} /></Field>
+            <Field label="Capacity" hint="Auto-filled from room type — you can still adjust it."><Input type="number" min={1} value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} /></Field>
+            <Field label="Room type"><Select options={ROOM_TYPES} value={form.roomType} onChange={(e) => setRoomType(e.target.value)} /></Field>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
@@ -92,27 +106,83 @@ function Rooms({ toast, role }) {
 }
 
 function Applications({ toast, role }) {
+  const { user } = useAuth()
   const canApply = can(role, 'hostel.apply')
   const canManage = can(role, 'hostel.approve')
   const canPay = can(role, 'hostel.pay')
-  const [apply, setApply] = useState({ studentId: '', reason: '', roomType: 'DOUBLE' })
+  const isStudent = role === 'STUDENT'
+  const myId = user?.userId
+
+  // Students always act as themselves; the ID is fixed (never a free-text box).
+  const [apply, setApply] = useState({ studentId: isStudent ? (myId || '') : '', reason: '', roomType: 'DOUBLE', studyYear: 1 })
   const [applying, setApplying] = useState(false)
   const [appId, setAppId] = useState('')
   const [payOpen, setPayOpen] = useState(false)
   const [rejectTarget, setRejectTarget] = useState(null)
   const [rejectReason, setRejectReason] = useState('')
   const [busyId, setBusyId] = useState(null)
+  const [pendingPopup, setPendingPopup] = useState(false)
 
-  const { data, loading, reload } = useAsync(() => (canManage ? HostelApi.allApplications() : Promise.resolve([])), [canManage])
+  // Admin/hostel-admin: all applications. Student: only THEIR OWN applications.
+  const { data, loading, reload } = useAsync(
+    () => (canManage ? HostelApi.allApplications()
+      : isStudent && myId ? HostelApi.studentApplications(myId)
+      : Promise.resolve([])),
+    [canManage, isStudent, myId]
+  )
   const applications = asArray(data)
 
+  // Student: figure out if they're currently staying (active allotment) and if a
+  // previous application is still pending.
+  const { data: myAllotData } = useAsync(
+    () => (isStudent && myId ? HostelApi.studentAllotments(myId) : Promise.resolve([])),
+    [isStudent, myId]
+  )
+  const myAllotments = asArray(myAllotData)
+  const isStaying = myAllotments.some((a) => String(a.status).toUpperCase() === 'ACTIVE')
+  const hasPending = applications.some((a) => String(a.status).toUpperCase() === 'PENDING')
+
+  // AUTO-FILL "Application ID" on the Pay hostel fee card with the student's own
+  // application — no more typing an ID by hand. Preference order:
+  //   1. an APPROVED application that still needs payment (paymentStatus !== 'PAID'),
+  //   2. otherwise the most recent application of any status.
+  // Only auto-fills while the field is still empty, so it never overwrites a value
+  // the student deliberately typed themselves.
+  const [appIdTouched, setAppIdTouched] = useState(false)
+  useEffect(() => {
+    if (!isStudent || appIdTouched || applications.length === 0) return
+    const unpaidApproved = applications
+      .filter((a) => String(a.status).toUpperCase() === 'APPROVED' && String(a.paymentStatus).toUpperCase() !== 'PAID')
+      .sort((a, b) => (b.applicationId || 0) - (a.applicationId || 0))[0]
+    const latest = applications.slice().sort((a, b) => (b.applicationId || 0) - (a.applicationId || 0))[0]
+    const target = unpaidApproved || latest
+    if (target?.applicationId) setAppId(String(target.applicationId))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applications, isStudent])
+
   const doApply = async () => {
+    // If a previous application is still awaiting the hostel admin, block and show a popup.
+    if (hasPending) { setPendingPopup(true); return }
+    // When re-applying while already staying, the reason is mandatory.
+    if (isStaying && !apply.reason.trim()) {
+      return toast.error('You are already staying in a room — please type a reason to re-apply.')
+    }
     setApplying(true)
     try {
-      await HostelApi.apply(Number(apply.studentId), { reason: apply.reason, roomType: apply.roomType })
-      toast.success('Application submitted'); setApply({ studentId: '', reason: '', roomType: 'DOUBLE' })
+      await HostelApi.apply(Number(apply.studentId), {
+        reason: apply.reason,
+        roomType: apply.roomType,
+        studyYear: Number(apply.studyYear) || 1,
+      })
+      toast.success('Application submitted')
+      setApply({ studentId: isStudent ? (myId || '') : '', reason: '', roomType: 'DOUBLE', studyYear: 1 })
       reload()
-    } catch (e) { toast.error(apiMessage(e)) } finally { setApplying(false) }
+    } catch (e) {
+      // Backend also guards the pending rule — surface its popup if it fires.
+      const msg = apiMessage(e)
+      if (/under process/i.test(msg)) setPendingPopup(true)
+      else toast.error(msg)
+    } finally { setApplying(false) }
   }
   const approve = async (id) => {
     setBusyId(id)
@@ -139,9 +209,32 @@ function Applications({ toast, role }) {
           <Card className="p-6">
             <h3 className="font-display font-semibold mb-4" style={{ color: 'var(--text)' }}>Apply for hostel</h3>
             <div className="space-y-4">
-              <Field label="Student ID"><Input type="number" min={1} max={999999} value={apply.studentId} onChange={(e) => setApply({ ...apply, studentId: e.target.value })} placeholder="5" /></Field>
-              <Field label="Room type"><Select options={ROOM_TYPES} value={apply.roomType} onChange={(e) => setApply({ ...apply, roomType: e.target.value })} /></Field>
-              <Field label="Reason"><Input value={apply.reason} onChange={(e) => setApply({ ...apply, reason: e.target.value })} placeholder="Home is too far from campus" /></Field>
+              {/* Student's own applicant ID, shown by default and locked. */}
+              <Field label="Your applicant ID" hint="This is your own student ID — you can only apply for yourself.">
+                <Input type="number" value={apply.studentId} disabled readOnly />
+              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Room type"><Select options={ROOM_TYPES} value={apply.roomType} onChange={(e) => setApply({ ...apply, roomType: e.target.value })} /></Field>
+                <Field label="Year of study"><Select
+                  options={[
+                    { value: 1, label: '1st year' }, { value: 2, label: '2nd year' },
+                    { value: 3, label: '3rd year' }, { value: 4, label: '4th year' },
+                  ]}
+                  value={apply.studyYear} onChange={(e) => setApply({ ...apply, studyYear: Number(e.target.value) })} /></Field>
+              </div>
+
+              {/* Re-apply while already staying → reason is REQUIRED, with a starred warning. */}
+              {isStaying ? (
+                <Field
+                  label={<span>Reason <span className="text-rose-500">*</span></span>}
+                  hint={<span className="text-rose-500">You are already staying in this room — please type the reason to re-apply.</span>}
+                >
+                  <Input required value={apply.reason} onChange={(e) => setApply({ ...apply, reason: e.target.value })} placeholder="Reason for re-applying" />
+                </Field>
+              ) : (
+                <Field label="Reason"><Input value={apply.reason} onChange={(e) => setApply({ ...apply, reason: e.target.value })} placeholder="Home is too far from campus" /></Field>
+              )}
+
               <Button onClick={doApply} loading={applying}><Plus size={16} /> Submit application</Button>
             </div>
           </Card>
@@ -149,22 +242,56 @@ function Applications({ toast, role }) {
         {canPay && (
           <Card className="p-6">
             <h3 className="font-display font-semibold mb-4" style={{ color: 'var(--text)' }}>Pay hostel fee</h3>
-            <Field label="Application ID"><Input type="number" min={1} max={999999} value={appId} onChange={(e) => setAppId(e.target.value)} placeholder="1" /></Field>
+            <Field label="Application ID" hint={appId ? 'Auto-filled from your own hostel application — change it if you meant a different one.' : 'You have no hostel applications yet.'}>
+              <Input
+                type="number" min={1} max={999999} value={appId}
+                onChange={(e) => { setAppIdTouched(true); setAppId(e.target.value) }}
+                placeholder="1"
+              />
+            </Field>
             <Button className="mt-4" onClick={() => { if (!appId) return toast.error('Enter an application ID'); setPayOpen(true) }}><IndianRupee size={15} /> Make payment</Button>
           </Card>
         )}
       </div>
 
+      {/* STUDENT: only their own applications. */}
+      {isStudent && (
+        <Card className="p-4">
+          <h3 className="font-display font-semibold mb-4 px-1" style={{ color: 'var(--text)' }}>My hostel applications</h3>
+          {loading ? <Spinner /> : applications.length === 0 ? <EmptyState icon={BedDouble} title="No applications yet" hint="Submit an application above to get started." />
+            : <Table head={['ID', 'Room type', 'Year', 'Reason', 'Fee', 'Payment', 'Status']}>
+                {applications.map((a) => (
+                  <Row key={a.applicationId}>
+                    <Cell mono>{a.applicationId}</Cell>
+                    <Cell><Badge value={a.roomType} /></Cell>
+                    <Cell>{a.studyYear ? `Year ${a.studyYear}` : '—'}</Cell>
+                    <Cell className="max-w-[220px] truncate">{a.reason}</Cell>
+                    <Cell>{a.hostelFee ? `₹${Number(a.hostelFee).toLocaleString('en-IN')}` : '—'}</Cell>
+                    <Cell><Badge value={a.paymentStatus} /></Cell>
+                    <Cell>
+                      <Badge value={a.status} />
+                      {a.status === 'REJECTED' && a.rejectionReason && (
+                        <div className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>{a.rejectionReason}</div>
+                      )}
+                    </Cell>
+                  </Row>
+                ))}
+              </Table>}
+        </Card>
+      )}
+
+      {/* ADMIN / HOSTEL ADMIN: all applications with actions. */}
       {canManage && (
         <Card className="p-4">
           <h3 className="font-display font-semibold mb-4 px-1" style={{ color: 'var(--text)' }}>All hostel applications</h3>
           {loading ? <Spinner /> : applications.length === 0 ? <EmptyState icon={BedDouble} title="No applications yet" />
-            : <Table head={['ID', 'Student', 'Room type', 'Reason', 'Fee', 'Payment', 'Status', '']}>
+            : <Table head={['ID', 'Student', 'Room type', 'Year', 'Reason', 'Fee', 'Payment', 'Status', '']}>
                 {applications.map((a) => (
                   <Row key={a.applicationId}>
                     <Cell mono>{a.applicationId}</Cell>
                     <Cell>{a.studentName || a.studentId}</Cell>
                     <Cell><Badge value={a.roomType} /></Cell>
+                    <Cell>{a.studyYear ? `Year ${a.studyYear}` : '—'}</Cell>
                     <Cell className="max-w-[200px] truncate">{a.reason}</Cell>
                     <Cell>{a.hostelFee ? `₹${Number(a.hostelFee).toLocaleString('en-IN')}` : '—'}</Cell>
                     <Cell><Badge value={a.paymentStatus} /></Cell>
@@ -195,6 +322,18 @@ function Applications({ toast, role }) {
         appId={appId}
         onDone={() => { setPayOpen(false); reload() }}
       />
+
+      {/* "Under process" popup: shown when a student re-submits while a prior application is still pending. */}
+      <Modal open={pendingPopup} onClose={() => setPendingPopup(false)} title="Application under process">
+        <div className="space-y-4">
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Please wait till our hostel admin confirms your application — it is currently under process.
+          </p>
+          <div className="flex justify-end">
+            <Button onClick={() => setPendingPopup(false)}>Got it</Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={!!rejectTarget} onClose={() => setRejectTarget(null)} title="Reject application">
         <div className="space-y-4">
@@ -344,10 +483,13 @@ function HostelPaymentModal({ open, onClose, toast, appId, onDone }) {
 }
 
 function Allotments({ toast, role }) {
+  const { user } = useAuth()
   const canManage = can(role, 'hostel.allot')
+  const isStudent = role === 'STUDENT'
+  const myId = user?.userId
   const [form, setForm] = useState({ studentId: '', roomId: '', academicYear: '2026-27', checkinDate: '' })
   const [saving, setSaving] = useState(false)
-  const [studentId, setStudentId] = useState('')
+  const [studentId, setStudentId] = useState(isStudent ? (myId || '') : '')
   const [searchData, setSearchData] = useState(null)
   const [searching, setSearching] = useState(false)
 
@@ -409,7 +551,7 @@ function Allotments({ toast, role }) {
           <Card className="p-6">
             <h3 className="font-display font-semibold mb-4" style={{ color: 'var(--text)' }}>My allotments</h3>
             <div className="flex items-end gap-3 mb-4">
-              <div className="flex-1"><span className="label">Student ID</span><Input type="number" min={1} max={999999} value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="5" /></div>
+              <div className="flex-1"><span className="label">Your applicant ID</span><Input type="number" value={studentId} onChange={(e) => setStudentId(e.target.value)} disabled={isStudent} readOnly={isStudent} placeholder="5" /></div>
               <Button onClick={searchByStudent} loading={searching}><Search size={16} /> Load</Button>
             </div>
             {searching ? <Spinner /> : !searchData ? <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Enter a student ID to see their allotment history.</p>

@@ -14,6 +14,7 @@ import {
 import { Stepper } from '../../components/ui/extras'
 import { ADMISSION_PIPELINE, can } from '../../lib/constants'
 import { useAuth } from '../../context/AuthContext'
+import { clearMyAdmissionId } from './Admissions'
 
 /**
  * Extract the application's status from whatever payload shape the backend returns.
@@ -57,7 +58,7 @@ export default function AdmissionDetail() {
   const navigate = useNavigate()
   const toast = useToast()
 
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const role = user?.role
   const allow = (a) => can(role, a)
 
@@ -162,6 +163,31 @@ export default function AdmissionDetail() {
       setViewer({ title, data: d })
     } catch (e) {
       toast.error(apiMessage(e, `Cannot view ${title.toLowerCase()}`))
+    }
+  }
+
+  // Finalising enrollment is the end of the applicant's journey. On success, when the
+  // person doing it is the applicant/student themselves, we log them out and send them
+  // to the animated thank-you page (they'll log back in with their student account).
+  const finalizeAndCelebrate = async () => {
+    setBusy(true)
+    try {
+      await AdmissionApi.finalizeEnrollment(appId)
+      const isSelf = role === 'APPLICANT' || role === 'STUDENT'
+      if (isSelf) {
+        clearMyAdmissionId(user?.userId)   // forget the tracked application id
+        logout()                            // end the applicant session
+        navigate('/enrolled', { replace: true })
+        return
+      }
+      // Admin/staff finalising on someone's behalf: just refresh in place.
+      toast.success('Enrollment Phase Finalized')
+      await load()
+      setModal(null)
+    } catch (e) {
+      toast.error(apiMessage(e))
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -343,7 +369,7 @@ export default function AdmissionDetail() {
 
                 {allow('adm.finalizeEnrollment') && !isTerminal && (
                   <ActionCard icon={GraduationCap} title="Finalize Enrollment" desc="Formally register profile as a system-wide active student."
-                    actions={<Button size="sm" onClick={() => run(() => AdmissionApi.finalizeEnrollment(appId), 'Enrollment Phase Finalized')}><GraduationCap size={14} /> Finalize Enrollment</Button>} />
+                    actions={<Button size="sm" onClick={finalizeAndCelebrate} loading={busy}><GraduationCap size={14} /> Finalize Enrollment</Button>} />
                 )}
 
                 {allow('adm.view') && (

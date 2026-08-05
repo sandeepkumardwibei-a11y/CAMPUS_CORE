@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom'
 import {
   Layers, BookOpen, Bell, GraduationCap, Wallet, CalendarCheck,
   BedDouble, FileSpreadsheet, ArrowUpRight, Sparkles, UserCog,
+  Building2, Users,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { ProgramApi, CourseApi, NotificationApi, HostelApi, FeeApi, UserApi } from '../lib/services'
+import { ProgramApi, CourseApi, NotificationApi, HostelApi, FeeApi, UserApi, DepartmentApi } from '../lib/services'
 import { StatCard } from '../components/ui/extras'
 import { Card } from '../components/ui'
 import { navForRole, can } from '../lib/constants'
@@ -20,7 +21,7 @@ function asArrayLike(d) {
 
 export default function Dashboard() {
   const { user } = useAuth()
-  const [stats, setStats] = useState({ programs: '—', courses: '—', unread: '—', rooms: '—', pendingApprovals: '—' })
+  const [stats, setStats] = useState({ programs: '—', courses: '—', unread: '—', rooms: '—', pendingApprovals: '—', departments: '—', users: '—' })
 
   useEffect(() => {
     const num = (v) => (Array.isArray(v) ? v.length : (v?.length ?? v?.totalElements ?? v ?? 0))
@@ -36,6 +37,15 @@ export default function Dashboard() {
       CourseApi.all()
         .then((d) => setStats((s) => ({ ...s, courses: countActive(d, 'ACTIVE') })))
         .catch(() => {})
+      DepartmentApi.all()
+        .then((d) => setStats((s) => ({ ...s, departments: asArrayLike(d).length })))
+        .catch(() => {})
+      // Total user count — visible to roles that can view the user directory.
+      if (can(user?.role, 'users.list')) {
+        UserApi.list()
+          .then((d) => setStats((s) => ({ ...s, users: asArrayLike(d).length })))
+          .catch(() => {})
+      }
       if (can(user?.role, 'hostel.availableRooms')) {
         HostelApi.availableRooms().then((d) => setStats((s) => ({ ...s, rooms: num(d) }))).catch(() => {})
       }
@@ -93,19 +103,35 @@ export default function Dashboard() {
         </div>
       </Card>
 
-      {/* Stats */}
+      {/* Stats — every card links to its section. */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Active programs" value={stats.programs} icon={Layers} tone="indigo" />
-        <StatCard label="Courses offered" value={stats.courses} icon={BookOpen} tone="fuchsia" />
+        <Link to="/programs" className="block">
+          <StatCard label="Active programs" value={stats.programs} icon={Layers} tone="indigo" />
+        </Link>
+        <Link to="/courses" className="block">
+          <StatCard label="Courses offered" value={stats.courses} icon={BookOpen} tone="fuchsia" />
+        </Link>
+        <Link to="/departments" className="block">
+          <StatCard label="Departments" value={stats.departments} icon={Building2} tone="indigo" />
+        </Link>
+        {can(user?.role, 'users.list') && (
+          <Link to="/users" className="block">
+            <StatCard label="All users" value={stats.users} icon={Users} tone="fuchsia" />
+          </Link>
+        )}
         {can(user?.role, 'hostel.availableRooms') && (
-          <StatCard label="Rooms available" value={stats.rooms} icon={BedDouble} tone="emerald" />
+          <Link to="/hostel" className="block">
+            <StatCard label="Rooms available" value={stats.rooms} icon={BedDouble} tone="emerald" />
+          </Link>
         )}
         {can(user?.role, 'users.updateStatus') && (
-          <Link to="/users?status=PENDING">
+          <Link to="/users?status=PENDING" className="block">
             <StatCard label="Pending approvals" value={stats.pendingApprovals} icon={UserCog} tone="amber" />
           </Link>
         )}
-        <StatCard label="Unread alerts" value={stats.unread} icon={Bell} tone="amber" />
+        <Link to="/notifications" className="block">
+          <StatCard label="Unread alerts" value={stats.unread} icon={Bell} tone="amber" />
+        </Link>
       </div>
 
       {/* Quick actions */}

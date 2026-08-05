@@ -4,7 +4,7 @@ import { HostelApi } from '../lib/services'
 import { useAsync, asArray } from '../lib/hooks'
 import { apiMessage } from '../lib/api'
 import { useToast } from '../context/ToastContext'
-import { ROOM_TYPES, can } from '../lib/constants'
+import { ROOM_TYPES, can, currentAcademicYear } from '../lib/constants'
 import { useAuth } from '../context/AuthContext'
 import {
   PageHeader, Card, Button, Table, Row, Cell, Badge, Spinner, EmptyState,
@@ -487,7 +487,7 @@ function Allotments({ toast, role }) {
   const canManage = can(role, 'hostel.allot')
   const isStudent = role === 'STUDENT'
   const myId = user?.userId
-  const [form, setForm] = useState({ studentId: '', roomId: '', academicYear: '2026-27', checkinDate: '' })
+  const [form, setForm] = useState({ studentId: '', roomId: '', academicYear: currentAcademicYear(), checkinDate: '' })
   const [saving, setSaving] = useState(false)
   const [studentId, setStudentId] = useState(isStudent ? (myId || '') : '')
   const [searchData, setSearchData] = useState(null)
@@ -498,11 +498,30 @@ function Allotments({ toast, role }) {
   )
   const allAllotments = asArray(allData)
 
+  // Eligible students for allotment = those whose application is APPROVED and whose
+  // hostel fee is PAID. We show their names in the dropdown (value = studentId).
+  const { data: appsData } = useAsync(
+    () => (canManage ? HostelApi.allApplications() : Promise.resolve([])), [canManage]
+  )
+  const eligibleStudents = (() => {
+    const seen = new Set()
+    const list = []
+    asArray(appsData).forEach((a) => {
+      const approved = String(a.status).toUpperCase() === 'APPROVED'
+      const paid = String(a.paymentStatus).toUpperCase() === 'PAID'
+      if (approved && paid && a.studentId != null && !seen.has(a.studentId)) {
+        seen.add(a.studentId)
+        list.push({ id: a.studentId, name: a.studentName || `Student ${a.studentId}` })
+      }
+    })
+    return list
+  })()
+
   const allot = async () => {
     setSaving(true)
     try {
       await HostelApi.allot({ studentId: Number(form.studentId), roomId: Number(form.roomId), academicYear: form.academicYear, checkinDate: form.checkinDate })
-      window.dispatchEvent(new Event('cc:data-changed')); toast.success('Room allotted'); setForm({ studentId: '', roomId: '', academicYear: '2026-27', checkinDate: '' })
+      window.dispatchEvent(new Event('cc:data-changed')); toast.success('Room allotted'); setForm({ studentId: '', roomId: '', academicYear: currentAcademicYear(), checkinDate: '' })
       canManage ? reloadAll() : null
     } catch (e) { toast.error(apiMessage(e)) } finally { setSaving(false) }
   }
@@ -536,7 +555,20 @@ function Allotments({ toast, role }) {
             <h3 className="font-display font-semibold mb-4" style={{ color: 'var(--text)' }}>Allot room</h3>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Student ID"><Input type="number" min={1} max={999999} value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })} placeholder="5" /></Field>
+                <Field label="Student">
+                  <select
+                    className="field truncate"
+                    value={form.studentId}
+                    onChange={(e) => setForm({ ...form, studentId: e.target.value })}
+                  >
+                    <option value="">
+                      {eligibleStudents.length ? 'Select student' : 'No eligible students'}
+                    </option>
+                    {eligibleStudents.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </Field>
                 <Field label="Room ID"><Input type="number" min={1} max={999999} value={form.roomId} onChange={(e) => setForm({ ...form, roomId: e.target.value })} placeholder="1" /></Field>
               </div>
               <div className="grid grid-cols-2 gap-4">

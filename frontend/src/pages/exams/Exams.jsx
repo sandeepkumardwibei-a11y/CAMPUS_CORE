@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileSpreadsheet, Plus, Search, ArrowRight, Calculator, CheckCheck } from 'lucide-react'
+import { FileSpreadsheet, Plus, Search, ArrowRight, Calculator } from 'lucide-react'
 import { ExamApi, CourseApi } from '../../lib/services'
-import { useAsync, asArray } from '../../lib/hooks'
+import { useAsync, asArray, activeOnly } from '../../lib/hooks'
 import { apiMessage } from '../../lib/api'
 import { useToast } from '../../context/ToastContext'
-import { EXAM_TYPES, can } from '../../lib/constants'
+import { EXAM_TYPES, can, currentAcademicYear, currentYearStart } from '../../lib/constants'
 import { isHoliday, HOLIDAY_MAP } from '../../lib/holidays'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -15,7 +15,7 @@ import {
 import { Tabs } from '../../components/ui/extras'
 import { StudentSelect } from '../../components/ui/StudentSelect'
 
-const empty = { courseId: '', semester: 3, academicYear: '2026-27', examType: 'INTERNAL', examDate: '', startTime: '', durationMins: 90, venue: '', maxMarks: 100 }
+const empty = { courseId: '', semester: 3, academicYear: currentAcademicYear(), examType: 'INTERNAL', examDate: '', startTime: '', durationMins: 90, venue: '', maxMarks: 100 }
 
 // College hours + break windows (mirrors backend guards)
 const DAY_START = '08:00', DAY_END = '16:00'
@@ -45,9 +45,10 @@ function ExamList({ toast }) {
   const { user } = useAuth()
   const canSchedule = can(user?.role, 'exam.schedule')
   const { data: coursesData } = useAsync(() => CourseApi.all(), [])
-  const courses = asArray(coursesData)
+  // Dropdown shows only ACTIVE courses (no INACTIVE), ascending by id.
+  const courses = activeOnly(coursesData, 'courseId')
   const [mode, setMode] = useState('list') // 'list' | 'course'
-  const [q, setQ] = useState({ academicYear: '2026-27', semester: '3', courseId: '' })
+  const [q, setQ] = useState({ academicYear: currentAcademicYear(), semester: '3', courseId: '' })
   const [rows, setRows] = useState(null)
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
@@ -105,7 +106,7 @@ function ExamList({ toast }) {
               <Select value={q.courseId} onChange={(e) => setQ({ ...q, courseId: e.target.value })} placeholder="Select a course"
                 options={courses.map((c) => ({ value: c.courseId, label: `${c.courseName} (${c.courseCode})` }))} /></div>
           : <div className="w-28"><span className="label">Semester</span><Input type="number" min={1} max={8} value={q.semester} onChange={(e) => setQ({ ...q, semester: e.target.value })} placeholder="3" /></div>}
-        <div className="w-36"><span className="label">Academic year</span><Input value={q.academicYear} onChange={(e) => setQ({ ...q, academicYear: e.target.value })} placeholder="2026-27" /></div>
+        <div className="w-36"><span className="label">Academic year</span><Input value={q.academicYear} onChange={(e) => setQ({ ...q, academicYear: e.target.value })} placeholder={currentAcademicYear()} /></div>
         <Button onClick={load} loading={loading}><Search size={16} /> Load exams</Button>
       </Card>
 
@@ -142,7 +143,7 @@ function ExamList({ toast }) {
           <div className="grid grid-cols-3 gap-4">
             <Field label="Exam type"><Select options={EXAM_TYPES} value={form.examType} onChange={set('examType')} /></Field>
             <Field label="Date" hint={form.examDate && isHoliday(form.examDate) ? `⚠ Holiday: ${HOLIDAY_MAP[form.examDate].name}` : 'No holidays / breaks allowed'}>
-              <Input type="date" value={form.examDate} onChange={set('examDate')} />
+              <Input type="date" min={currentYearStart()} value={form.examDate} onChange={set('examDate')} />
             </Field>
             <Field label="Start time"><Input type="time" value={form.startTime} onChange={set('startTime')} /></Field>
           </div>
@@ -166,8 +167,7 @@ function StudentResults({ toast }) {
   const [grades, setGrades] = useState(null)
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [compile, setCompile] = useState({ academicYear: '2026-27', semester: '3' })
-  const [regId, setRegId] = useState('')
+  const [compile, setCompile] = useState({ academicYear: currentAcademicYear(), semester: '3' })
 
   const load = async () => {
     if (!studentId) return toast.error('Enter a student ID')
@@ -186,11 +186,6 @@ function StudentResults({ toast }) {
       toast.success('Result compiled'); load()
     } catch (e) { toast.error(apiMessage(e)) }
   }
-  const confirmReg = async () => {
-    try { await ExamApi.confirmRegistration(Number(regId)); toast.success('Registration confirmed') }
-    catch (e) { toast.error(apiMessage(e)) }
-  }
-
   return (
     <>
       <Card className="p-4 mb-5 flex flex-wrap items-end gap-3">
@@ -234,16 +229,6 @@ function StudentResults({ toast }) {
               </Table>}
         </Card>
       </div>
-
-      <Card className="p-4 flex flex-wrap items-end gap-3">
-        <div>
-          <span className="label">Confirm a semester registration (exam eligibility)</span>
-          <div className="flex items-end gap-3">
-            <div className="w-40"><Input type="number" min={1} max={999999} value={regId} onChange={(e) => setRegId(e.target.value)} placeholder="Registration ID" /></div>
-            <Button variant="subtle" onClick={confirmReg} disabled={!regId}><CheckCheck size={16} /> Confirm registration</Button>
-          </div>
-        </div>
-      </Card>
     </>
   )
 }

@@ -71,7 +71,6 @@ public class CourseService {
                 .semester(request.getSemester())
                 .credits(request.getCredits())
                 .faculty(faculty)
-                .maxEnrollment(request.getMaxEnrollment() != null ? request.getMaxEnrollment() : 60)
                 .status(Course.CourseStatus.ACTIVE)
                 .build();
 
@@ -187,7 +186,6 @@ public class CourseService {
                 .credits(c.getCredits())
                 .facultyId(c.getFaculty() != null ? c.getFaculty().getUserId() : null)
                 .facultyName(c.getFaculty() != null ? c.getFaculty().getName() : null)
-                .maxEnrollment(c.getMaxEnrollment())
                 .status(c.getStatus() != null ? c.getStatus().name() : "ACTIVE")
                 .build();
     }

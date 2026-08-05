@@ -121,14 +121,23 @@ public class AttendanceService {
                 throw new AttendanceException("Validation Error: Invalid attendance status value '" + recordDto.getStatus() + "' for student '" + student.getName() + "'. Accepted: PRESENT, ABSENT, LATE, OFFICIAL_DUTY.");
             }
 
+            // RULE: a student may be marked only ONCE for the SAME course on the SAME date.
+            // Attendance for a DIFFERENT course on the same date is still allowed (this lookup
+            // is scoped to student + course + date), but the same course cannot be marked twice.
             Optional<AttendanceRecord> existingRecordOpt = recordRepository
                     .findByStudentUserIdAndCourseCourseIdAndLectureDate(student.getUserId(), course.getCourseId(), request.getLectureDate());
 
-            AttendanceRecord record = existingRecordOpt.orElseGet(() -> AttendanceRecord.builder()
+            if (existingRecordOpt.isPresent()) {
+                throw new AttendanceException("Duplicate Entry: Attendance for student '" + student.getName()
+                        + "' in course '" + course.getCourseName() + "' on " + request.getLectureDate()
+                        + " has already been recorded. You cannot mark attendance twice for the same course on the same date.");
+            }
+
+            AttendanceRecord record = AttendanceRecord.builder()
                     .student(student)
                     .course(course)
                     .lectureDate(request.getLectureDate())
-                    .build());
+                    .build();
 
             record.setStatus(status);
             recordRepository.save(record);
@@ -233,6 +242,13 @@ public class AttendanceService {
         java.util.List<String> allowedFacultyStatuses = java.util.List.of("PRESENT", "ABSENT", "LATE", "OFFICIAL_DUTY");
         if (!allowedFacultyStatuses.contains(targetStatus)) {
             throw new AttendanceException("Validation Failed: Invalid status structure '" + request.getStatus() + "' for Faculty. Allowed values are: PRESENT, ABSENT, LATE, OFFICIAL_DUTY.");
+        }
+
+        // RULE: a faculty member may be marked only ONCE per date. Block a second entry
+        // for the same faculty on the same day.
+        if (facultyAttendanceRepository.existsByFacultyUserIdAndDate(faculty.getUserId(), request.getDate())) {
+            throw new AttendanceException("Duplicate Entry: Attendance for faculty '" + faculty.getName()
+                    + "' on " + request.getDate() + " has already been recorded. You cannot mark faculty attendance twice for the same date.");
         }
 
         FacultyAttendanceRecord record = FacultyAttendanceRecord.builder()

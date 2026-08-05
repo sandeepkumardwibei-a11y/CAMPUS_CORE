@@ -44,9 +44,6 @@ public class Course {
     @JoinColumn(name = "faculty_id")
     private User faculty;
 
-    @Column(name = "max_enrollment", nullable = false)
-    private Integer maxEnrollment = 60;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private CourseStatus status;

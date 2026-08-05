@@ -786,7 +786,7 @@ async function loadOfferedCourses() {
                 <td>${c.courseName}</td>
                 <td>${c.credits}</td>
                 <td>${c.facultyName || 'TBA'}</td>
-                <td>${c.maxEnrollment}</td>
+                <td>—</td>
                 <td><span class="badge badge-success">${c.status}</span></td>
             </tr>
         `).join('');
@@ -847,7 +847,7 @@ async function loadStudentAttendance() {
         tbody.innerHTML = res.data.map(a => {
             const alertClass = a.shortageFlag ? 'badge-danger' : 'badge-success';
             const progressColor = a.shortageFlag ? 'var(--danger)' : 'var(--success)';
-            
+
             return `
                 <tr>
                     <td>${a.courseId} (ID)</td>
@@ -940,7 +940,7 @@ async function loadStudentFees() {
                     <td>${i.dueDate}</td>
                     <td><span class="badge ${isPaid ? 'badge-success' : 'badge-warning'}">${i.status}</span></td>
                     <td>
-                        ${isPaid ? `<span style="color: var(--text-muted)">Receipt Generated</span>` : 
+                        ${isPaid ? `<span style="color: var(--text-muted)">Receipt Generated</span>` :
                         `<button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;" onclick="openPaymentModal(${i.invoiceId}, ${i.netPayable})">Pay Now</button>`}
                     </td>
                 </tr>
@@ -1014,7 +1014,7 @@ async function loadStudentBookings() {
             let badgeClass = 'badge-warning';
             if (b.status === 'APPROVED') badgeClass = 'badge-success';
             if (b.status === 'REJECTED') badgeClass = 'badge-danger';
-            
+
             return `
                 <tr>
                     <td>${b.facilityName}</td>
@@ -1033,7 +1033,7 @@ async function loadStudentBookings() {
 async function loadFacultyCoursesForAttendance() {
     const select = document.getElementById('faculty-attendance-course');
     document.getElementById('faculty-attendance-date').value = new Date().toISOString().substring(0,10);
-    
+
     try {
         const res = await apiFetch(`/courses/faculty/${state.user.userId}`);
         if (res.data.length === 0) {
@@ -1052,7 +1052,7 @@ async function loadFacultyCoursesForAttendance() {
 async function loadCourseStudentsForAttendance() {
     const courseId = document.getElementById('faculty-attendance-course').value;
     const sheet = document.getElementById('faculty-attendance-sheet');
-    
+
     if (!courseId) {
         sheet.innerHTML = `<p style="color: var(--text-muted); text-align: center;">Please select a course to load the enrollment sheet.</p>`;
         return;
@@ -1088,7 +1088,7 @@ function selectStatusPill(pill, status) {
 async function submitFacultyAttendance() {
     const courseId = document.getElementById('faculty-attendance-course').value;
     const lectureDate = document.getElementById('faculty-attendance-date').value;
-    
+
     if (!courseId || !lectureDate) {
         showToast('Please specify course and lecture date.', 'warning');
         return;
@@ -1139,7 +1139,7 @@ async function loadFacultyCoursesForGrades() {
 async function loadCourseExams() {
     const courseId = document.getElementById('faculty-grades-course').value;
     const select = document.getElementById('faculty-grades-exam');
-    
+
     if (!courseId) return;
 
     try {
@@ -1161,14 +1161,14 @@ async function loadCourseExams() {
 async function loadExamGradesSheet() {
     const examId = document.getElementById('faculty-grades-exam').value;
     const tbody = document.getElementById('faculty-grades-tbody');
-    
+
     if (!examId) return;
 
     try {
         // Fetch registrations of course first
         const courseId = document.getElementById('faculty-grades-course').value;
         const regRes = await apiFetch(`/registrations/course/${courseId}`);
-        
+
         // Fetch existing grades for the exam (if draft or filled)
         const gradesRes = await apiFetch(`/exams/${examId}/grades`);
         const gradeMap = {};
@@ -1262,7 +1262,7 @@ async function loadScheduledExams() {
                 </td>
                 <td>${e.maxMarks}</td>
                 <td>
-                    ${e.status === 'PUBLISHED' ? `<span class="badge badge-success">Published</span>` : 
+                    ${e.status === 'PUBLISHED' ? `<span class="badge badge-success">Published</span>` :
                     `<button class="btn btn-success" style="padding: 6px 12px; font-size: 12px;" onclick="publishExamGrades(${e.examId})">Publish Grades</button>`}
                 </td>
             </tr>
@@ -1500,13 +1500,12 @@ async function handleCreateCourse(e) {
     const programId = parseInt(document.getElementById('course-program-id').value);
     const semester = parseInt(document.getElementById('course-semester').value);
     const credits = parseInt(document.getElementById('course-credits').value);
-    const maxEnrollment = parseInt(document.getElementById('course-max-seats').value);
     const facultyId = parseInt(document.getElementById('course-faculty-id').value);
 
     try {
         await apiFetch(`/courses`, {
             method: 'POST',
-            body: { courseName, courseCode, programId, semester, credits, maxEnrollment, facultyId }
+            body: { courseName, courseCode, programId, semester, credits, facultyId }
         });
         showToast('Course created successfully!');
         document.getElementById('create-course-form').reset();

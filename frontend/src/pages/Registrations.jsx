@@ -12,7 +12,7 @@ import { useToast } from '../context/ToastContext'
 
 import { useAuth } from '../context/AuthContext'
 
-import { can } from '../lib/constants'
+import { can, currentAcademicYear } from '../lib/constants'
 
 import {
 
@@ -22,7 +22,7 @@ import {
 
 import { Tabs } from '../components/ui/extras'
  
-const empty = { programId: '', academicYear: '2026-27', semester: 1 }
+const empty = { programId: '', academicYear: currentAcademicYear(), semester: 1 }
  
 // Show the actual course IDs assigned to a registration (e.g. "2, 3"),
 
@@ -94,7 +94,7 @@ export default function Registrations() {
 <div className="space-y-4">
 <Field label="Program ID"><Input type="number" min={1} max={999999} value={form.programId} onChange={set('programId')} placeholder="1" /></Field>
 <div className="grid grid-cols-2 gap-4">
-<Field label="Academic year"><Input value={form.academicYear} onChange={set('academicYear')} placeholder="2026-27" /></Field>
+<Field label="Academic year"><Input value={form.academicYear} onChange={set('academicYear')} placeholder={currentAcademicYear()} /></Field>
 <Field label="Semester"><Input type="number" min={1} max={8} value={form.semester} onChange={set('semester')} /></Field>
 </div>
 <p className="text-sm rounded-xl p-3" style={{ background: 'var(--surface-2, rgba(120,120,140,0.08))', color: 'var(--text-muted)' }}>

@@ -11,7 +11,7 @@ export function FacultySelect({ value, onChange, placeholder = 'Select faculty',
   useEffect(() => {
     let alive = true
     UserApi.list('FACULTY')
-      .then((d) => { if (alive) setFaculty(asArray(d)) })
+      .then((d) => { if (alive) setFaculty(asArray(d).slice().sort((a, b) => (a.userId ?? 0) - (b.userId ?? 0))) })
       .catch(() => { if (alive) setFaculty([]) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }

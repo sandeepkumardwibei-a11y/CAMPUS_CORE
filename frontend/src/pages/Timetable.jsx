@@ -1,10 +1,10 @@
 import { useMemo, useState, useEffect, Fragment } from 'react'
 import { CalendarDays, Plus, Search, LayoutGrid, List } from 'lucide-react'
 import { TimetableApi, CourseApi, ProgramApi } from '../lib/services'
-import { useAsync, asArray } from '../lib/hooks'
+import { useAsync, asArray, activeOnly } from '../lib/hooks'
 import { apiMessage } from '../lib/api'
 import { useToast } from '../context/ToastContext'
-import { DAYS, can } from '../lib/constants'
+import { DAYS, can, currentAcademicYear } from '../lib/constants'
 import { useAuth } from '../context/AuthContext'
 import {
   PageHeader, Card, Button, Table, Row, Cell, Badge, Spinner, EmptyState,
@@ -12,7 +12,7 @@ import {
 } from '../components/ui'
 import { Tabs } from '../components/ui/extras'
 
-const empty = { programId: '', courseId: '', dayOfWeek: 'MONDAY', startTime: '', endTime: '', venue: '', academicYear: '2026-27', semester: 3 }
+const empty = { programId: '', courseId: '', dayOfWeek: 'MONDAY', startTime: '', endTime: '', venue: '', academicYear: currentAcademicYear(), semester: 3 }
 
 // Fixed daily structure (item 11)
 const DAY_START = '08:00'
@@ -140,11 +140,11 @@ export default function Timetable() {
   const { data: myScheduleData, loading: myScheduleLoading } = useAsync(() => (isStudent ? TimetableApi.mySchedule() : Promise.resolve([])), [isStudent])
   // 🎯 Faculty self-service: auto-fetch the logged-in faculty member's own teaching timetable.
   const { data: myTeachingData, loading: myTeachingLoading } = useAsync(() => (isFaculty ? TimetableApi.myTeaching() : Promise.resolve([])), [isFaculty])
-  const courses = asArray(coursesData)
-  const programs = asArray(programsData)
+  const courses = activeOnly(coursesData, 'courseId')
+  const programs = activeOnly(programsData, 'programId')
   const [scoped, setScoped] = useState(null)
   const [scopeLoading, setScopeLoading] = useState(false)
-  const [q, setQ] = useState({ courseId: '', studentId: '', programId: '', academicYear: '2026-27', semester: '3' })
+  const [q, setQ] = useState({ courseId: '', studentId: '', programId: '', academicYear: currentAcademicYear(), semester: '3' })
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(empty)
   const [saving, setSaving] = useState(false)
@@ -162,7 +162,7 @@ export default function Timetable() {
     return () => { cancelled = true }
   }, [form.programId])
 
-  const courseOptionsForModal = form.programId ? asArray(programCourses) : courses
+  const courseOptionsForModal = form.programId ? activeOnly(programCourses, 'courseId') : courses
 
   const list = isStudent
     ? asArray(myScheduleData)
@@ -240,7 +240,7 @@ export default function Timetable() {
             <>
               <div className="w-32"><span className="label">Student ID</span><Input type="number" min={1} max={999999} value={q.studentId} onChange={(e) => setQ({ ...q, studentId: e.target.value })} placeholder="5" /></div>
               <div className="w-32"><span className="label">Program ID</span><Input type="number" min={1} max={999999} value={q.programId} onChange={(e) => setQ({ ...q, programId: e.target.value })} placeholder="1" /></div>
-              <div className="w-32"><span className="label">Year</span><Input value={q.academicYear} onChange={(e) => setQ({ ...q, academicYear: e.target.value })} placeholder="2026-27" /></div>
+              <div className="w-32"><span className="label">Year</span><Input value={q.academicYear} onChange={(e) => setQ({ ...q, academicYear: e.target.value })} placeholder={currentAcademicYear()} /></div>
               <div className="w-24"><span className="label">Sem</span><Input type="number" min={1} max={8} value={q.semester} onChange={(e) => setQ({ ...q, semester: e.target.value })} placeholder="3" /></div>
             </>
           )}

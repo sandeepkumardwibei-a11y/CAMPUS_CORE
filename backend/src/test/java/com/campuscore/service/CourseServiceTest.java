@@ -80,7 +80,6 @@ class CourseServiceTest {
                 .semester(1)
                 .credits(4)
                 .faculty(facultyUser)
-                .maxEnrollment(60)
                 .status(Course.CourseStatus.ACTIVE)
                 .build();
     }
@@ -98,7 +97,6 @@ class CourseServiceTest {
         request.setFacultyId(10L);
         request.setSemester(1);
         request.setCredits(4);
-        request.setMaxEnrollment(60);
 
         when(courseRepository.findByCourseCode("CS101")).thenReturn(Optional.empty());
         when(programRepository.findById(1L)).thenReturn(Optional.of(sampleProgram));

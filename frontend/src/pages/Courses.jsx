@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { BookOpen, Plus, Search, UserPlus, ChevronDown, X } from 'lucide-react'
 import { CourseApi, ProgramApi } from '../lib/services'
-import { useAsync, asArray } from '../lib/hooks'
+import { useAsync, asArray, activeOnly } from '../lib/hooks'
 import { apiMessage } from '../lib/api'
 import { useToast } from '../context/ToastContext'
 import { COURSE_STATUS, can } from '../lib/constants'
@@ -13,7 +13,7 @@ import {
 import { Tabs } from '../components/ui/extras'
 import { FacultySelect } from '../components/ui/FacultySelect'
 
-const empty = { courseName: '', courseCode: '', credits: 4, programIds: [], semester: 1, facultyId: '', maxEnrollment: 60 }
+const empty = { courseName: '', courseCode: '', credits: 4, programIds: [], semester: 1, facultyId: '' }
 
 // Multi-select of registered programs (item 4: many-to-many program<->course).
 function ProgramMultiSelect({ programs, selected, onChange }) {
@@ -83,7 +83,8 @@ export default function Courses() {
     return arr
   }
   const { data: programsData } = useAsync(() => ProgramApi.all(), [])
-  const programs = asArray(programsData)
+  // Dropdown pickers show only ACTIVE programs (no DISCONTINUED), ascending by id.
+  const activePrograms = activeOnly(programsData, 'programId')
   const [scoped, setScoped] = useState(null)
   const [scopeLoading, setScopeLoading] = useState(false)
   const [q, setQ] = useState({ programId: '', semester: '', facultyId: '' })
@@ -110,7 +111,7 @@ export default function Courses() {
       await CourseApi.create({
         courseName: form.courseName, courseCode: form.courseCode, credits: Number(form.credits),
         programIds: form.programIds, semester: Number(form.semester),
-        facultyId: form.facultyId ? Number(form.facultyId) : null, maxEnrollment: Number(form.maxEnrollment),
+        facultyId: form.facultyId ? Number(form.facultyId) : null,
       })
       toast.success('Course created'); setOpen(false); setForm(empty); reload()
     } catch (e) { toast.error(apiMessage(e)) } finally { setSaving(false) }
@@ -149,7 +150,7 @@ export default function Courses() {
               <div className="w-56"><span className="label">Program</span>
                 <Select value={q.programId} onChange={(e) => setQ({ ...q, programId: e.target.value })}
                   placeholder="Select a program"
-                  options={programs.map((p) => ({ value: p.programId, label: p.programName }))} />
+                  options={activePrograms.map((p) => ({ value: p.programId, label: p.programName }))} />
               </div>
               <div className="w-36"><span className="label">Semester</span><Input type="number" min={1} max={8} value={q.semester} onChange={(e) => setQ({ ...q, semester: e.target.value })} placeholder="Optional" /></div>
             </>
@@ -201,7 +202,7 @@ export default function Courses() {
             <Field label="Course code"><Input value={form.courseCode} onChange={set('courseCode')} placeholder="CS201" /></Field>
           </div>
           <Field label="Programs" hint="A course can belong to multiple programs (many-to-many).">
-            <ProgramMultiSelect programs={programs} selected={form.programIds} onChange={(ids) => setForm({ ...form, programIds: ids })} />
+            <ProgramMultiSelect programs={activePrograms} selected={form.programIds} onChange={(ids) => setForm({ ...form, programIds: ids })} />
           </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Credits"><Input type="number" min={1} max={8} value={form.credits} onChange={set('credits')} /></Field>
@@ -211,7 +212,6 @@ export default function Courses() {
             <Field label="Faculty" hint="Optional — choose a registered faculty">
               <FacultySelect value={form.facultyId} onChange={(id) => setForm({ ...form, facultyId: id ?? '' })} />
             </Field>
-            <Field label="Max enrollment"><Input type="number" value={form.maxEnrollment} onChange={set('maxEnrollment')} /></Field>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>

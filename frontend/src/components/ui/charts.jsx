@@ -73,6 +73,68 @@ export function PieChart({ data = [], size = 180, title }) {
   )
 }
 
+// ---- StackedBarChart --------------------------------------------------------
+// data: [{ label, segments: [{ label, value, color }] }]
+// Each bar is normalized to 100% and split into colored segments — useful for
+// showing the Present / Late / Official duty / Absent mix per month.
+export function StackedBarChart({ data = [], height = 200, title }) {
+  const items = (data || []).filter((d) => (d.segments || []).some((s) => Number(s.value) > 0))
+  if (!items.length) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8">
+        {title && <p className="text-sm font-semibold mb-2" style={{ color: 'var(--text)' }}>{title}</p>}
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No data to chart yet.</p>
+      </div>
+    )
+  }
+
+  const barH = height - 34
+  // Legend = union of all segment labels/colors across the dataset.
+  const legend = []
+  const seen = new Set()
+  items.forEach((d) => (d.segments || []).forEach((s) => {
+    if (!seen.has(s.label)) { seen.add(s.label); legend.push({ label: s.label, color: s.color }) }
+  }))
+
+  return (
+    <div>
+      {title && <p className="text-sm font-semibold mb-3" style={{ color: 'var(--text)' }}>{title}</p>}
+      <div className="flex items-end gap-3 overflow-x-auto pb-1" style={{ height }}>
+        {items.map((d, i) => {
+          const total = (d.segments || []).reduce((s, x) => s + (Number(x.value) || 0), 0)
+          return (
+            <div key={i} className="flex flex-col items-center justify-end min-w-12 flex-1" style={{ height: barH + 24 }}>
+              <div className="w-full rounded-md overflow-hidden flex flex-col-reverse" style={{ height: barH }} title={d.label}>
+                {(d.segments || []).map((s, j) => {
+                  const v = Number(s.value) || 0
+                  const pct = total > 0 ? (v / total) * 100 : 0
+                  if (pct <= 0) return null
+                  return (
+                    <div
+                      key={j}
+                      style={{ height: `${pct}%`, background: s.color }}
+                      title={`${s.label}: ${Math.round(pct)}%`}
+                    />
+                  )
+                })}
+              </div>
+              <span className="text-xs mt-2 text-center" style={{ color: 'var(--text-muted)' }}>{d.label}</span>
+            </div>
+          )
+        })}
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 justify-center">
+        {legend.map((l, i) => (
+          <div key={i} className="flex items-center gap-1.5 text-xs">
+            <span className="inline-block w-3 h-3 rounded-sm" style={{ background: l.color }} />
+            <span style={{ color: 'var(--text-muted)' }}>{l.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ---- BarChart ---------------------------------------------------------------
 // data: [{ label, value }] — value is a percentage (0–100). Renders vertical bars.
 export function BarChart({ data = [], height = 200, title, unit = '%', max = 100, color = '#10b981' }) {

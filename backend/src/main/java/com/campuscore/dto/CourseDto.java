@@ -34,7 +34,6 @@ public class CourseDto {
         @Max(value = 8, message = "Semester must be between 1 and 8")
         private Integer semester;
         private Long facultyId;
-        private Integer maxEnrollment;
     }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
@@ -48,7 +47,6 @@ public class CourseDto {
         private Integer credits;
         private Long facultyId;
         private String facultyName;
-        private Integer maxEnrollment;
         private String status;
     }
 }

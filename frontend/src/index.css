@@ -114,6 +114,10 @@ input.field[type="number"] { -moz-appearance: textfield; appearance: textfield; 
 input.field[type="number"]::-webkit-outer-spin-button,
 input.field[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 select.field { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%238a93a6' stroke-width='2' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right .7rem center; padding-right: 2rem; }
+/* Keep long selected values (e.g. student names) inside the box instead of
+   stretching or clipping the control — truncate with an ellipsis. */
+select.field { max-width: 100%; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+.field.truncate { text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
 
 .label { display:block; font-size: .78rem; font-weight: 600; color: var(--text-muted); margin-bottom: .35rem; letter-spacing: .01em; }
 

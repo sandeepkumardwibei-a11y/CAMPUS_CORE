@@ -5,15 +5,16 @@ import { asArray } from '../lib/hooks'
 import { apiMessage } from '../lib/api'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
-import { ATTENDANCE_STATUS, can } from '../lib/constants'
+import { ATTENDANCE_STATUS, can, currentAcademicYear } from '../lib/constants'
 import { FacultySelect } from '../components/ui/FacultySelect'
 import { StudentSelect } from '../components/ui/StudentSelect'
+import { CourseSelect } from '../components/ui/CourseSelect'
 import {
   PageHeader, Card, Button, Table, Row, Cell, Badge, Spinner, EmptyState,
   Field, Input, Select,
 } from '../components/ui'
 import { Tabs } from '../components/ui/extras'
-import { PieChart, BarChart } from '../components/ui/charts'
+import { PieChart, BarChart, StackedBarChart } from '../components/ui/charts'
 
 export default function Attendance() {
   const toast = useToast()
@@ -32,7 +33,7 @@ export default function Attendance() {
       <PageHeader icon={CalendarCheck} title="Attendance" subtitle="Record lectures, review summaries and track shortages." />
       {tabs.length > 1 && <Tabs active={tab} onChange={setTab} tabs={tabs} />}
       {tab === 'mark' && can(role, 'att.mark') && <MarkAttendance toast={toast} />}
-      {tab === 'summary' && <StudentSummary toast={toast} defaultId={role === 'STUDENT' ? user?.userId : ''} />}
+      {tab === 'summary' && <StudentSummary toast={toast} defaultId={role === 'STUDENT' ? user?.userId : ''} isStudent={role === 'STUDENT'} />}
       {tab === 'shortage' && can(role, 'att.courseShortage') && <CourseShortage toast={toast} />}
       {tab === 'faculty' && can(role, 'att.facultyAttendance') && <FacultyAttendance toast={toast} canMark={can(role, 'att.markFaculty')} />}
     </div>
@@ -58,31 +59,40 @@ function MarkAttendance({ toast }) {
   }
 
   return (
-    <Card className="p-6">
+    <Card className="p-6 sm:p-8">
       <div className="grid sm:grid-cols-2 gap-4 mb-5">
-        <Field label="Course ID"><Input type="number" min={1} max={999999} value={meta.courseId} onChange={(e) => setMeta({ ...meta, courseId: e.target.value })} placeholder="1" /></Field>
+        <Field label="Course">
+          <CourseSelect
+            facultyScoped
+            value={meta.courseId}
+            onChange={(id) => { setMeta({ ...meta, courseId: id ?? '' }); setRecords([{ studentId: '', status: 'PRESENT' }]) }}
+          />
+        </Field>
         <Field label="Lecture date"><Input type="date" max={new Date().toISOString().slice(0, 10)} value={meta.lectureDate} onChange={(e) => setMeta({ ...meta, lectureDate: e.target.value })} /></Field>
       </div>
       <div className="space-y-2 mb-4">
         <span className="label">Student records</span>
         {records.length > 0 && (
           <div className="flex gap-3 px-1">
-            <span className="text-xs font-semibold flex-1" style={{ color: 'var(--text-faint)' }}>Student</span>
-            <span className="text-xs font-semibold w-36 shrink-0" style={{ color: 'var(--text-faint)' }}>Status</span>
+            <span className="text-xs font-semibold flex-1 min-w-0" style={{ color: 'var(--text-faint)' }}>Student</span>
+            <span className="text-xs font-semibold w-44 shrink-0" style={{ color: 'var(--text-faint)' }}>Status</span>
             <span className="w-9 shrink-0" />
           </div>
         )}
         {records.map((r, i) => (
           <div key={i} className="flex gap-3 items-center">
-            <div className="flex-1 min-w-0">
+            {/* Student name box takes all remaining width so long names stay readable. */}
+            <div className="flex-750 min-w-500">
               <StudentSelect
+                className="truncate"
+                courseScoped
                 courseId={meta.courseId}
                 value={r.studentId}
                 onChange={(id) => upd(i, 'studentId', id ?? '')}
               />
             </div>
             <select
-              className="field w-36 shrink-0"
+              className="field truncate w-20 shrink-50"
               value={r.status}
               onChange={(e) => upd(i, 'status', e.target.value)}
             >
@@ -100,7 +110,7 @@ function MarkAttendance({ toast }) {
   )
 }
 
-function StudentSummary({ toast, defaultId }) {
+function StudentSummary({ toast, defaultId, isStudent }) {
   const [q, setQ] = useState({ studentId: defaultId || '', academicYear: '' })
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -138,8 +148,10 @@ function StudentSummary({ toast, defaultId }) {
   return (
     <>
       <Card className="p-4 mb-5 flex flex-wrap items-end gap-3">
-        <div className="w-40"><span className="label">Student ID</span><Input type="number" min={1} max={999999} value={q.studentId} onChange={(e) => setQ({ ...q, studentId: e.target.value })} placeholder="5" /></div>
-        <div className="w-40"><span className="label">Academic year</span><Input value={q.academicYear} onChange={(e) => setQ({ ...q, academicYear: e.target.value })} placeholder="2026-27" /></div>
+        <div className="w-72"><span className="label">Student</span>
+          <StudentSelect allStudents value={q.studentId} onChange={(id) => setQ({ ...q, studentId: id ?? '' })} />
+        </div>
+        <div className="w-40"><span className="label">Academic year</span><Input value={q.academicYear} onChange={(e) => setQ({ ...q, academicYear: e.target.value })} placeholder={currentAcademicYear()} /></div>
         <Button onClick={load} loading={loading}><Search size={16} /> Load</Button>
       </Card>
 
@@ -160,7 +172,7 @@ function StudentSummary({ toast, defaultId }) {
       )}
 
       <Card className="p-4">
-        {loading ? <Spinner /> : !data ? <EmptyState icon={CalendarCheck} title="Look up a student" hint="Enter a student ID to see per-course attendance." />
+        {loading ? <Spinner /> : !data ? <EmptyState icon={CalendarCheck} title="Look up a student" hint="Select a student to see per-course attendance." />
           : data.length === 0 ? <EmptyState icon={CalendarCheck} title="No records" />
           : <Table head={['Course', 'Attended', 'Total', 'Percentage', 'Standing']}>
               {data.map((s) => (
@@ -183,18 +195,21 @@ function CourseShortage({ toast }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const load = async () => {
+    if (!courseId) return toast.error('Select a course first')
     setLoading(true)
     try { setData(asArray(await AttendanceApi.courseShortage(Number(courseId)))) }
     catch (e) { toast.error(apiMessage(e)) } finally { setLoading(false) }
   }
   return (
     <>
-      <Card className="p-4 mb-5 flex items-end gap-3">
-        <div className="w-40"><span className="label">Course ID</span><Input type="number" min={1} max={999999} value={courseId} onChange={(e) => setCourseId(e.target.value)} placeholder="1" /></div>
+      <Card className="p-4 mb-5 flex flex-wrap items-end gap-3">
+        <div className="w-72"><span className="label">Course</span>
+          <CourseSelect value={courseId} onChange={(id) => setCourseId(id ?? '')} />
+        </div>
         <Button onClick={load} loading={loading}><Search size={16} /> Load shortage list</Button>
       </Card>
       <Card className="p-4">
-        {loading ? <Spinner /> : !data ? <EmptyState icon={CalendarCheck} title="Check shortages" hint="Enter a course ID to list students below the threshold." />
+        {loading ? <Spinner /> : !data ? <EmptyState icon={CalendarCheck} title="Check shortages" hint="Select a course to list students below the threshold." />
           : data.length === 0 ? <EmptyState icon={CalendarCheck} title="No shortages" hint="Everyone meets the attendance requirement." />
           : <Table head={['Student', 'Attended', 'Total', 'Percentage']}>
               {data.map((s) => (
@@ -271,23 +286,47 @@ function FacultyAttendance({ toast, canMark }) {
             if (!r.date) return
             const [y, m] = String(r.date).split('-')
             const key = `${y}-${m}`
-            byMonth[key] = byMonth[key] || { total: 0, attended: 0, label: `${MONTHS[Number(m) - 1] || m} ${String(y).slice(2)}` }
+            byMonth[key] = byMonth[key] || {
+              total: 0, attended: 0,
+              present: 0, late: 0, officialDuty: 0, absent: 0,
+              label: `${MONTHS[Number(m) - 1] || m} ${String(y).slice(2)}`,
+            }
             byMonth[key].total += 1
             if (ATTENDED.has(r.status)) byMonth[key].attended += 1
+            if (r.status === 'PRESENT') byMonth[key].present += 1
+            else if (r.status === 'LATE') byMonth[key].late += 1
+            else if (r.status === 'OFFICIAL_DUTY') byMonth[key].officialDuty += 1
+            else if (r.status === 'ABSENT') byMonth[key].absent += 1
           })
-          const bar = Object.keys(byMonth).sort().map((k) => ({
+          const monthKeys = Object.keys(byMonth).sort()
+          const bar = monthKeys.map((k) => ({
             label: byMonth[k].label,
             value: byMonth[k].total ? Math.round((byMonth[k].attended / byMonth[k].total) * 100) : 0,
           }))
+          // Stacked bar: the % split of Present / Late / Official duty / Absent per month.
+          const stacked = monthKeys.map((k) => ({
+            label: byMonth[k].label,
+            segments: [
+              { label: 'Present', value: byMonth[k].present, color: '#10b981' },
+              { label: 'Late', value: byMonth[k].late, color: '#f59e0b' },
+              { label: 'Official duty', value: byMonth[k].officialDuty, color: '#6366f1' },
+              { label: 'Absent', value: byMonth[k].absent, color: '#f43f5e' },
+            ],
+          }))
           return (
-            <div className="grid md:grid-cols-2 gap-6 mb-6">
-              <PieChart title="Attendance breakdown" data={pie} size={160} />
-              <BarChart title="Attendance % by month" data={bar} unit="%" max={100} />
-            </div>
+            <>
+              <div className="grid md:grid-cols-2 gap-6 mb-6">
+                <PieChart title="Attendance breakdown" data={pie} size={160} />
+                <BarChart title="Attendance % by month" data={bar} unit="%" max={100} />
+              </div>
+              <div className="mb-6">
+                <StackedBarChart title="Status split by month (Present / Late / Official duty / Absent %)" data={stacked} />
+              </div>
+            </>
           )
         })()}
 
-        {loading ? <Spinner /> : !data ? <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Enter a faculty ID to view their attendance log.</p>
+        {loading ? <Spinner /> : !data ? <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Select a faculty member to view their attendance log.</p>
           : data.length === 0 ? <EmptyState icon={CalendarCheck} title="No records" />
           : <Table head={['Date', 'Status']}>
               {data.map((r) => (<Row key={r.id}><Cell>{r.date}</Cell><Cell><Badge value={r.status} /></Cell></Row>))}

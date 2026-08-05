@@ -329,7 +329,6 @@ public class SemesterRegistrationService {
                     .credits(c.getCredits())
                     .facultyId(c.getFaculty() != null ? c.getFaculty().getUserId() : null)
                     .facultyName(c.getFaculty() != null ? c.getFaculty().getName() : null)
-                    .maxEnrollment(c.getMaxEnrollment())
                     .status(c.getStatus().name())
                     .build()
         ).collect(Collectors.toList());
@@ -363,7 +362,6 @@ public class SemesterRegistrationService {
                         .credits(c.getCredits())
                         .facultyId(c.getFaculty() != null ? c.getFaculty().getUserId() : null)
                         .facultyName(c.getFaculty() != null ? c.getFaculty().getName() : null)
-                        .maxEnrollment(c.getMaxEnrollment())
                         .status(c.getStatus().name())
                         .build()
                 ).collect(Collectors.toList());

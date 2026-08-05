@@ -45,3 +45,16 @@ export function asArray(d) {
   if (d && typeof d === 'object') return [d]
   return []
 }
+
+// Keep only rows whose status counts as "active" for dropdown pickers.
+// Programs -> excludes DISCONTINUED, Courses -> excludes INACTIVE,
+// Departments/Users -> keeps only ACTIVE. A missing/blank status defaults to active
+// (backend defaults new rows to ACTIVE). Results are sorted ascending by the given id key.
+export function activeOnly(d, idKey) {
+  const list = asArray(d).filter((x) => {
+    const s = String(x?.status ?? '').toUpperCase()
+    return s === '' || s === 'ACTIVE'
+  })
+  if (idKey) list.sort((a, b) => (a?.[idKey] ?? 0) - (b?.[idKey] ?? 0))
+  return list
+}

@@ -6,7 +6,7 @@ import { asArray, useAsync } from '../lib/hooks'
 import { apiMessage } from '../lib/api'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
-import { INVOICE_STATUS, can } from '../lib/constants'
+import { INVOICE_STATUS, can, currentAcademicYear } from '../lib/constants'
 import {
   PageHeader, Card, Button, Table, Row, Cell, Badge, Spinner, EmptyState,
   Modal, Field, Input, Select,
@@ -15,7 +15,7 @@ import { Tabs } from '../components/ui/extras'
 import { StudentSelect } from '../components/ui/StudentSelect'
 
 const money = (n) => (n == null ? '—' : `₹${Number(n).toLocaleString('en-IN')}`)
-const invEmpty = { studentId: '', academicYear: '2026-27', semester: 3, tuitionFee: 0, libraryFee: 0, labFee: 0, activityFee: 0, scholarshipAdjusted: 0, dueDate: '' }
+const invEmpty = { studentId: '', academicYear: currentAcademicYear(), semester: 3, tuitionFee: 0, libraryFee: 0, labFee: 0, activityFee: 0, scholarshipAdjusted: 0, dueDate: '' }
 
 // Payment modes available in the fee module (student self-pay and staff recording).
 const STUDENT_PAY_MODES = [

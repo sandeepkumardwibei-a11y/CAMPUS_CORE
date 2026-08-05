@@ -5,12 +5,12 @@ import { AdmissionApi, ProgramApi, DepartmentApi } from '../../lib/services'
 import { apiMessage } from '../../lib/api'
 import { useToast } from '../../context/ToastContext'
 import { PageHeader, Card, Button, Field, Input, Select } from '../../components/ui'
-import { useAsync, asArray } from '../../lib/hooks'
+import { useAsync, activeOnly } from '../../lib/hooks'
 import { Stepper } from '../../components/ui/extras'
-import { ADMISSION_PIPELINE, can } from '../../lib/constants'
+import { ADMISSION_PIPELINE, can, currentAcademicYear } from '../../lib/constants'
 import { useAuth } from '../../context/AuthContext'
  
-const empty = { applicantName: '', email: '', phone: '', programName: '', departmentName: '', academicYear: '2026-27', percentageSecured: '' }
+const empty = { applicantName: '', email: '', phone: '', programName: '', departmentName: '', academicYear: currentAcademicYear(), percentageSecured: '' }
 // Strips anything that isn't a digit, and caps at 10 digits.
 const onlyDigits = (v) => v.replace(/\D/g, '').slice(0, 10)
 
@@ -51,11 +51,13 @@ export default function Admissions() {
   // Program & Department options for the applicant dropdowns (only fetched when the form is shown)
   const { data: programsData } = useAsync(() => (showApplyCard ? ProgramApi.all() : Promise.resolve([])), [showApplyCard])
   const { data: departmentsData } = useAsync(() => (showApplyCard ? DepartmentApi.all() : Promise.resolve([])), [showApplyCard])
-  const allPrograms = asArray(programsData)
-  const departmentOptions = asArray(departmentsData).map((d) => d.departmentName).filter(Boolean)
+  // Dropdowns exclude DISCONTINUED programs / non-ACTIVE departments, ascending by id.
+  const allPrograms = activeOnly(programsData, 'programId')
+  const activeDepartments = activeOnly(departmentsData, 'departmentId')
+  const departmentOptions = activeDepartments.map((d) => d.departmentName).filter(Boolean)
 
   // item 5: once a department is chosen, only show programs offered under it.
-  const selectedDept = asArray(departmentsData).find((d) => d.departmentName === form.departmentName)
+  const selectedDept = activeDepartments.find((d) => d.departmentName === form.departmentName)
   const programOptions = allPrograms
     .filter((p) => !selectedDept || p.departmentId === selectedDept.departmentId)
     .map((p) => p.programName)
@@ -137,7 +139,7 @@ export default function Admissions() {
                   <Input value={form.phone} inputMode="numeric" maxLength={10} placeholder="9000000010"
                     onChange={(e) => setForm({ ...form, phone: onlyDigits(e.target.value) })} />
                 </Field>
-                <Field label="Academic year"><Input value={form.academicYear} onChange={set('academicYear')} placeholder="2026-27" /></Field>
+                <Field label="Academic year"><Input value={form.academicYear} onChange={set('academicYear')} placeholder={currentAcademicYear()} /></Field>
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
                 <Field label="Department name" hint="Choose a department first">
@@ -150,7 +152,7 @@ export default function Admissions() {
                     disabled={!form.departmentName} />
                 </Field>
               </div>
-              <Field label="Percentage secured"><Input type="number" step="0.1" value={form.percentageSecured} onChange={set('percentageSecured')} placeholder="88.5" /></Field>
+              <Field label="Percentage secured"><Input type="number" step="0.1" min={0} max={100} value={form.percentageSecured} onChange={set('percentageSecured')} placeholder="88.5" /></Field>
               <Button type="submit" loading={saving}><Send size={16} /> Submit application</Button>
             </form>
           </Card>

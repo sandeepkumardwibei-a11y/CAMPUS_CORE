@@ -195,3 +195,19 @@ export const NAV = [
 export function navForRole(role) {
   return NAV.filter((n) => n.roles === 'all' || (role && n.roles.includes(role)))
 }
+
+// Current academic year as "YYYY-YY" (academic year runs Jul–Jun, so from July
+// onward it's this calendar year, otherwise the previous one). Used as the default
+// wherever an academic-year field is required; users can still type a later one.
+export function currentAcademicYear() {
+  const now = new Date()
+  const y = now.getFullYear()
+  const startYear = now.getMonth() >= 6 ? y : y - 1
+  return `${startYear}-${String((startYear + 1) % 100).padStart(2, '0')}`
+}
+
+// First day of the current calendar year (YYYY-01-01). Used as a `min` on date
+// pickers so past years can't be selected.
+export function currentYearStart() {
+  return `${new Date().getFullYear()}-01-01`
+}

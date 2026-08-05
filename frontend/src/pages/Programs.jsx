@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Layers, Plus } from 'lucide-react'
 import { ProgramApi, DepartmentApi } from '../lib/services'
-import { useAsync, asArray } from '../lib/hooks'
+import { useAsync, asArray, activeOnly } from '../lib/hooks'
 import { apiMessage } from '../lib/api'
 import { useToast } from '../context/ToastContext'
 import { PROGRAM_LEVELS, PROGRAM_STATUS, can } from '../lib/constants'
@@ -11,7 +11,7 @@ import {
   Modal, Field, Input, Select,
 } from '../components/ui'
 
-const empty = { programName: '', level: 'UG', durationYears: 4, totalSeats: 60, minimumPercentage: 60, departmentId: '' }
+const empty = { programName: '', level: 'UG', durationYears: 4, totalSeats: 120, minimumPercentage: 60, departmentId: '' }
 
 export default function Programs() {
   const toast = useToast()
@@ -24,7 +24,8 @@ export default function Programs() {
   const [form, setForm] = useState(empty)
   const [saving, setSaving] = useState(false)
   const programs = asArray(data)
-  const departments = asArray(deptData)
+  // Dropdown picker shows only ACTIVE departments, ascending by id.
+  const activeDepartments = activeOnly(deptData, 'departmentId')
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
 
   const create = async () => {
@@ -87,13 +88,13 @@ export default function Programs() {
           <Field label="Program name"><Input value={form.programName} onChange={set('programName')} placeholder="B.Tech Computer Science" /></Field>
           <Field label="Department" hint="One department can offer many programs; a program belongs to one department.">
             <Select value={form.departmentId} onChange={set('departmentId')} placeholder="Select a department"
-              options={departments.map((d) => ({ value: d.departmentId, label: `${d.departmentName} (ID: ${d.departmentId})` }))} />
+              options={activeDepartments.map((d) => ({ value: d.departmentId, label: `${d.departmentName} (ID: ${d.departmentId})` }))} />
           </Field>
           <Field label="Level"><Select options={PROGRAM_LEVELS} value={form.level} onChange={set('level')} /></Field>
           <div className="grid grid-cols-3 gap-4">
             <Field label="Duration (yrs)"><Input type="number" value={form.durationYears} onChange={set('durationYears')} /></Field>
-            <Field label="Total seats"><Input type="number" value={form.totalSeats} onChange={set('totalSeats')} /></Field>
-            <Field label="Min %"><Input type="number" value={form.minimumPercentage} onChange={set('minimumPercentage')} /></Field>
+            <Field label="Total seats"><Input type="number" min={100} max={1000} value={form.totalSeats} onChange={set('totalSeats')} /></Field>
+            <Field label="Min %"><Input type="number" min={0} max={100} value={form.minimumPercentage} onChange={set('minimumPercentage')} /></Field>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>

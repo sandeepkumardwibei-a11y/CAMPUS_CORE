@@ -7,9 +7,9 @@ import { useToast } from '../../context/ToastContext'
 import { PageHeader, Card, Button, Field, Input, Select } from '../../components/ui'
 import { useAsync, activeOnly } from '../../lib/hooks'
 import { Stepper } from '../../components/ui/extras'
-import { ADMISSION_PIPELINE, can, currentAcademicYear } from '../../lib/constants'
+import { ADMISSION_PIPELINE, can, currentAcademicYear, academicYearError } from '../../lib/constants'
 import { useAuth } from '../../context/AuthContext'
- 
+
 const empty = { applicantName: '', email: '', phone: '', programName: '', departmentName: '', academicYear: currentAcademicYear(), percentageSecured: '' }
 // Strips anything that isn't a digit, and caps at 10 digits.
 const onlyDigits = (v) => v.replace(/\D/g, '').slice(0, 10)
@@ -76,6 +76,8 @@ export default function Admissions() {
 
   const apply = async (e) => {
     e.preventDefault()
+    const ayErr = academicYearError(form.academicYear)
+    if (ayErr) return toast.error(ayErr)
     setSaving(true)
     try {
       const res = await AdmissionApi.apply({ ...form, percentageSecured: Number(form.percentageSecured) })

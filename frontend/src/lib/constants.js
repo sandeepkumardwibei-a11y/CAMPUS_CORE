@@ -211,3 +211,20 @@ export function currentAcademicYear() {
 export function currentYearStart() {
   return `${new Date().getFullYear()}-01-01`
 }
+
+// Parse an academic year like "2026-27" or "2026-2027" to its start year (number),
+// or null if it doesn't match the expected pattern.
+export function academicYearStart(ay) {
+  const m = String(ay ?? '').trim().match(/^(\d{4})\s*[-/]\s*(\d{2,4})$/)
+  return m ? Number(m[1]) : null
+}
+
+// Validate an academic year for data entry: it must be well-formed AND not earlier
+// than the current academic year. Returns an error message, or '' when valid.
+export function academicYearError(ay) {
+  const start = academicYearStart(ay)
+  if (start == null) return 'Enter the academic year as YYYY-YY (e.g. ' + currentAcademicYear() + ').'
+  const current = academicYearStart(currentAcademicYear())
+  if (start < current) return 'Academic year cannot be earlier than the current year (' + currentAcademicYear() + ').'
+  return ''
+}

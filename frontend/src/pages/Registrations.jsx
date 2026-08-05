@@ -12,7 +12,7 @@ import { useToast } from '../context/ToastContext'
 
 import { useAuth } from '../context/AuthContext'
 
-import { can, currentAcademicYear } from '../lib/constants'
+import { can, currentAcademicYear, academicYearError } from '../lib/constants'
 
 import {
 
@@ -53,6 +53,10 @@ export default function Registrations() {
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
  
   const create = async (onDone) => {
+
+    const ayErr = academicYearError(form.academicYear)
+
+    if (ayErr) return toast.error(ayErr)
 
     setSaving(true)
 

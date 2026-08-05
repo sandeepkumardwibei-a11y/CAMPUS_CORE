@@ -4,7 +4,7 @@ import { TimetableApi, CourseApi, ProgramApi } from '../lib/services'
 import { useAsync, asArray, activeOnly } from '../lib/hooks'
 import { apiMessage } from '../lib/api'
 import { useToast } from '../context/ToastContext'
-import { DAYS, can, currentAcademicYear } from '../lib/constants'
+import { DAYS, can, currentAcademicYear, academicYearError } from '../lib/constants'
 import { useAuth } from '../context/AuthContext'
 import {
   PageHeader, Card, Button, Table, Row, Cell, Badge, Spinner, EmptyState,
@@ -189,6 +189,8 @@ export default function Timetable() {
     if (!form.programId) {
       toast.error('Please select a program for this timetable slot.'); return
     }
+    const ayErr = academicYearError(form.academicYear)
+    if (ayErr) { toast.error(ayErr); return }
     setSaving(true)
     try {
       await TimetableApi.create({

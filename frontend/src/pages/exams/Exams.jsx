@@ -5,7 +5,7 @@ import { ExamApi, CourseApi } from '../../lib/services'
 import { useAsync, asArray, activeOnly } from '../../lib/hooks'
 import { apiMessage } from '../../lib/api'
 import { useToast } from '../../context/ToastContext'
-import { EXAM_TYPES, can, currentAcademicYear, currentYearStart } from '../../lib/constants'
+import { EXAM_TYPES, can, currentAcademicYear, currentYearStart, academicYearError } from '../../lib/constants'
 import { isHoliday, HOLIDAY_MAP } from '../../lib/holidays'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -65,6 +65,8 @@ function ExamList({ toast }) {
   }
   const schedule = async () => {
     // Client guards mirror the backend (items 8 & 11)
+    const ayErr = academicYearError(form.academicYear)
+    if (ayErr) { toast.error(ayErr); return }
     if (isHoliday(form.examDate)) {
       toast.error(`${form.examDate} is a holiday (${HOLIDAY_MAP[form.examDate].name}). Exams can't be scheduled on holidays.`); return
     }
@@ -181,6 +183,8 @@ function StudentResults({ toast }) {
     } catch (e) { toast.error(apiMessage(e)) } finally { setLoading(false) }
   }
   const doCompile = async () => {
+    const ayErr = academicYearError(compile.academicYear)
+    if (ayErr) return toast.error(ayErr)
     try {
       await ExamApi.compileResult(Number(studentId), { academicYear: compile.academicYear, semester: compile.semester })
       toast.success('Result compiled'); load()

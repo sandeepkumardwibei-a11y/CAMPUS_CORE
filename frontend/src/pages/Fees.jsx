@@ -6,7 +6,7 @@ import { asArray, useAsync } from '../lib/hooks'
 import { apiMessage } from '../lib/api'
 import { useToast } from '../context/ToastContext'
 import { useAuth } from '../context/AuthContext'
-import { INVOICE_STATUS, can, currentAcademicYear } from '../lib/constants'
+import { INVOICE_STATUS, can, currentAcademicYear, academicYearError } from '../lib/constants'
 import {
   PageHeader, Card, Button, Table, Row, Cell, Badge, Spinner, EmptyState,
   Modal, Field, Input, Select,
@@ -94,6 +94,8 @@ export default function Fees() {
     catch (e) { toast.error(apiMessage(e)) }
   }
   const createInvoice = async () => {
+    const ayErr = academicYearError(inv.academicYear)
+    if (ayErr) return toast.error(ayErr)
     setSaving(true)
     try {
       const num = (v) => Number(v) || 0

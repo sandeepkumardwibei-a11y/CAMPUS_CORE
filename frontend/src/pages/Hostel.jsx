@@ -4,7 +4,7 @@ import { HostelApi } from '../lib/services'
 import { useAsync, asArray } from '../lib/hooks'
 import { apiMessage } from '../lib/api'
 import { useToast } from '../context/ToastContext'
-import { ROOM_TYPES, can, currentAcademicYear } from '../lib/constants'
+import { ROOM_TYPES, can, currentAcademicYear, academicYearError } from '../lib/constants'
 import { useAuth } from '../context/AuthContext'
 import {
   PageHeader, Card, Button, Table, Row, Cell, Badge, Spinner, EmptyState,
@@ -518,6 +518,8 @@ function Allotments({ toast, role }) {
   })()
 
   const allot = async () => {
+    const ayErr = academicYearError(form.academicYear)
+    if (ayErr) return toast.error(ayErr)
     setSaving(true)
     try {
       await HostelApi.allot({ studentId: Number(form.studentId), roomId: Number(form.roomId), academicYear: form.academicYear, checkinDate: form.checkinDate })

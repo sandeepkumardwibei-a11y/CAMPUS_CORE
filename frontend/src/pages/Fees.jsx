@@ -171,7 +171,9 @@ export default function Fees() {
             </> : <>
               {canStatus
                 ? <div className="w-64"><span className="label">Student</span><StudentSelect value={studentId} onChange={(id) => setStudentId(id ?? '')} /></div>
-                : <div className="w-40"><span className="label">Student ID</span><Input type="number" min={1} max={999999} value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="5" /></div>}
+                : isStudent
+                  ? <div className="w-64"><span className="label">Student</span><div className="field flex items-center" style={{ color: 'var(--text)' }}>{user?.name || 'You'}</div></div>
+                  : <div className="w-40"><span className="label">Student ID</span><Input type="number" min={1} max={999999} value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="5" /></div>}
               <Button onClick={loadStudent} loading={loading}><Search size={16} /> Load invoices</Button>
             </>}
           </Card>
@@ -210,7 +212,7 @@ export default function Fees() {
       <Modal open={invModal} onClose={() => setInvModal(false)} title="Generate invoice" size="lg">
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
-            <Field label="Student ID"><Input type="number" min={1} max={999999} value={inv.studentId} onChange={(e) => setInv({ ...inv, studentId: e.target.value })} placeholder="5" /></Field>
+            <Field label="Student"><StudentSelect allStudents value={inv.studentId} onChange={(id) => setInv({ ...inv, studentId: id ?? '' })} /></Field>
             <Field label="Academic year"><Input value={inv.academicYear} onChange={(e) => setInv({ ...inv, academicYear: e.target.value })} /></Field>
             <Field label="Semester"><Input type="number" min={1} max={8} value={inv.semester} onChange={(e) => setInv({ ...inv, semester: e.target.value })} /></Field>
           </div>

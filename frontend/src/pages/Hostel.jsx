@@ -532,6 +532,9 @@ function Allotments({ toast, role }) {
     try { setSearchData(asArray(await HostelApi.studentAllotments(Number(studentId)))) }
     catch (e) { toast.error(apiMessage(e)) } finally { setSearching(false) }
   }
+  // A logged-in student is always looking up their own allotment history —
+  // load it right away instead of making them type/confirm their own ID.
+  useEffect(() => { if (isStudent && studentId) searchByStudent() }, [isStudent])
   const vacate = async (id) => {
     try { await HostelApi.vacate(id); window.dispatchEvent(new Event('cc:data-changed')); toast.success('Room vacated'); canManage ? reloadAll() : searchByStudent() }
     catch (e) { toast.error(apiMessage(e)) }
@@ -585,10 +588,14 @@ function Allotments({ toast, role }) {
           <Card className="p-6">
             <h3 className="font-display font-semibold mb-4" style={{ color: 'var(--text)' }}>My allotments</h3>
             <div className="flex items-end gap-3 mb-4">
-              <div className="flex-1"><span className="label">Your applicant ID</span><Input type="number" value={studentId} onChange={(e) => setStudentId(e.target.value)} disabled={isStudent} readOnly={isStudent} placeholder="5" /></div>
-              <Button onClick={searchByStudent} loading={searching}><Search size={16} /> Load</Button>
+              <div className="flex-1"><span className="label">Student</span>
+                {isStudent
+                  ? <div className="field flex items-center" style={{ color: 'var(--text)' }}>{user?.name || 'You'}</div>
+                  : <Input type="number" value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="5" />}
+              </div>
+              {!isStudent && <Button onClick={searchByStudent} loading={searching}><Search size={16} /> Load</Button>}
             </div>
-            {searching ? <Spinner /> : !searchData ? <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Enter a student ID to see their allotment history.</p>
+            {searching ? <Spinner /> : !searchData ? <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{isStudent ? 'Loading your allotment history…' : 'Enter a student ID to see their allotment history.'}</p>
               : searchData.length === 0 ? <EmptyState icon={BedDouble} title="No allotments" />
               : <Table head={['ID', 'Room', 'Year', 'Check-in', 'Status']}>{renderRows(searchData)}</Table>}
           </Card>

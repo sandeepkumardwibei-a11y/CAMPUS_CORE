@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { CalendarCheck, Plus, Trash2, Search, Save } from 'lucide-react'
 import { AttendanceApi } from '../lib/services'
 import { asArray } from '../lib/hooks'
@@ -33,7 +33,7 @@ export default function Attendance() {
       <PageHeader icon={CalendarCheck} title="Attendance" subtitle="Record lectures, review summaries and track shortages." />
       {tabs.length > 1 && <Tabs active={tab} onChange={setTab} tabs={tabs} />}
       {tab === 'mark' && can(role, 'att.mark') && <MarkAttendance toast={toast} />}
-      {tab === 'summary' && <StudentSummary toast={toast} defaultId={role === 'STUDENT' ? user?.userId : ''} isStudent={role === 'STUDENT'} />}
+      {tab === 'summary' && <StudentSummary toast={toast} defaultId={role === 'STUDENT' ? user?.userId : ''} isStudent={role === 'STUDENT'} studentName={user?.name} />}
       {tab === 'shortage' && can(role, 'att.courseShortage') && <CourseShortage toast={toast} />}
       {tab === 'faculty' && can(role, 'att.facultyAttendance') && <FacultyAttendance toast={toast} canMark={can(role, 'att.markFaculty')} />}
     </div>
@@ -82,7 +82,7 @@ function MarkAttendance({ toast }) {
         {records.map((r, i) => (
           <div key={i} className="flex gap-3 items-center">
             {/* Student name box takes all remaining width so long names stay readable. */}
-            <div className="flex-750 min-w-500">
+            <div className="flex-1 min-w-0">
               <StudentSelect
                 className="truncate"
                 courseScoped
@@ -92,7 +92,7 @@ function MarkAttendance({ toast }) {
               />
             </div>
             <select
-              className="field truncate w-20 shrink-50"
+              className="field truncate w-44 shrink-0"
               value={r.status}
               onChange={(e) => upd(i, 'status', e.target.value)}
             >
@@ -110,7 +110,7 @@ function MarkAttendance({ toast }) {
   )
 }
 
-function StudentSummary({ toast, defaultId, isStudent }) {
+function StudentSummary({ toast, defaultId, isStudent, studentName }) {
   const [q, setQ] = useState({ studentId: defaultId || '', academicYear: '' })
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -119,6 +119,9 @@ function StudentSummary({ toast, defaultId, isStudent }) {
     try { setData(asArray(await AttendanceApi.studentSummary(Number(q.studentId), q.academicYear || undefined))) }
     catch (e) { toast.error(apiMessage(e)) } finally { setLoading(false) }
   }
+  // A logged-in student always looks up their own attendance — auto-load it once
+  // so they land straight on their data instead of having to press Load.
+  useEffect(() => { if (isStudent && q.studentId) load() }, [isStudent])
   // Aggregate the per-course summaries into totals for the charts.
   const totals = (data || []).reduce(
     (acc, s) => {
@@ -149,7 +152,11 @@ function StudentSummary({ toast, defaultId, isStudent }) {
     <>
       <Card className="p-4 mb-5 flex flex-wrap items-end gap-3">
         <div className="w-72"><span className="label">Student</span>
-          <StudentSelect allStudents value={q.studentId} onChange={(id) => setQ({ ...q, studentId: id ?? '' })} />
+          {isStudent ? (
+            <div className="field flex items-center" style={{ color: 'var(--text)' }}>{studentName || 'You'}</div>
+          ) : (
+            <StudentSelect allStudents value={q.studentId} onChange={(id) => setQ({ ...q, studentId: id ?? '' })} />
+          )}
         </div>
         <div className="w-40"><span className="label">Academic year</span><Input value={q.academicYear} onChange={(e) => setQ({ ...q, academicYear: e.target.value })} placeholder={currentAcademicYear()} /></div>
         <Button onClick={load} loading={loading}><Search size={16} /> Load</Button>

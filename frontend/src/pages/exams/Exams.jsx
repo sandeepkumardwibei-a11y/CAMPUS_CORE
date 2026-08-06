@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FileSpreadsheet, Plus, Search, ArrowRight, Calculator } from 'lucide-react'
 import { ExamApi, CourseApi } from '../../lib/services'
@@ -26,6 +26,8 @@ const withinHours = (s, e) => toMin(s) >= toMin(DAY_START) && toMin(e) <= toMin(
 
 export default function Exams() {
   const toast = useToast()
+  const { user } = useAuth()
+  const isStudent = user?.role === 'STUDENT'
   const [tab, setTab] = useState('exams')
   return (
     <div>
@@ -35,7 +37,14 @@ export default function Exams() {
         { key: 'student', label: 'Student results' },
       ]} />
       {tab === 'exams' && <ExamList toast={toast} />}
-      {tab === 'student' && <StudentResults toast={toast} />}
+      {tab === 'student' && (
+        <StudentResults
+          toast={toast}
+          isStudent={isStudent}
+          defaultId={isStudent ? user?.userId : ''}
+          studentName={isStudent ? user?.name : ''}
+        />
+      )}
     </div>
   )
 }
@@ -164,8 +173,8 @@ function ExamList({ toast }) {
   )
 }
 
-function StudentResults({ toast }) {
-  const [studentId, setStudentId] = useState('')
+function StudentResults({ toast, isStudent, defaultId, studentName }) {
+  const [studentId, setStudentId] = useState(defaultId || '')
   const [grades, setGrades] = useState(null)
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -182,6 +191,9 @@ function StudentResults({ toast }) {
       setGrades(asArray(g)); setResults(asArray(r))
     } catch (e) { toast.error(apiMessage(e)) } finally { setLoading(false) }
   }
+  // A logged-in student is always looking up their own grades/results — load them
+  // right away instead of making the student pick themselves from a dropdown.
+  useEffect(() => { if (isStudent && studentId) load() }, [isStudent])
   const doCompile = async () => {
     const ayErr = academicYearError(compile.academicYear)
     if (ayErr) return toast.error(ayErr)
@@ -193,12 +205,23 @@ function StudentResults({ toast }) {
   return (
     <>
       <Card className="p-4 mb-5 flex flex-wrap items-end gap-3">
-        <div className="w-64"><span className="label">Student</span><StudentSelect value={studentId} onChange={(id) => setStudentId(id ?? '')} /></div>
-        <Button onClick={load} loading={loading}><Search size={16} /> Load</Button>
+        <div className="w-64"><span className="label">Student</span>
+          {isStudent ? (
+            <div className="field flex items-center" style={{ color: 'var(--text)' }}>{studentName || 'You'}</div>
+          ) : (
+            <StudentSelect value={studentId} onChange={(id) => setStudentId(id ?? '')} />
+          )}
+        </div>
+        {!isStudent && <Button onClick={load} loading={loading}><Search size={16} /> Load</Button>}
         <div className="flex-1" />
-        <div className="w-28"><span className="label">Year</span><Input value={compile.academicYear} onChange={(e) => setCompile({ ...compile, academicYear: e.target.value })} /></div>
-        <div className="w-20"><span className="label">Sem</span><Input type="number" min={1} max={8} value={compile.semester} onChange={(e) => setCompile({ ...compile, semester: e.target.value })} /></div>
-        <Button variant="subtle" onClick={doCompile} disabled={!studentId}><Calculator size={16} /> Compile result</Button>
+        {/* Compiling a result is a controller/admin action — students only view what's already published. */}
+        {!isStudent && (
+          <>
+            <div className="w-28"><span className="label">Year</span><Input value={compile.academicYear} onChange={(e) => setCompile({ ...compile, academicYear: e.target.value })} /></div>
+            <div className="w-20"><span className="label">Sem</span><Input type="number" min={1} max={8} value={compile.semester} onChange={(e) => setCompile({ ...compile, semester: e.target.value })} /></div>
+            <Button variant="subtle" onClick={doCompile} disabled={!studentId}><Calculator size={16} /> Compile result</Button>
+          </>
+        )}
       </Card>
 
       <div className="grid lg:grid-cols-2 gap-6 mb-6">

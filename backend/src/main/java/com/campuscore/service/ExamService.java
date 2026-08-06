@@ -60,7 +60,7 @@ public class ExamService {
 
     @Transactional
     public ExamDto.Response scheduleExam(ExamDto.CreateRequest request) {
-        log.info("Entering scheduleExam execution pipeline for courseId: {} and examType: {}", 
+        log.info("Entering scheduleExam execution pipeline for courseId: {} and examType: {}",
                 request.getCourseId(), request.getExamType());
 
         Course course = courseRepository.findById(request.getCourseId())
@@ -99,7 +99,7 @@ public class ExamService {
                 .build();
 
         examRepository.save(exam);
-        
+
         log.info("Successfully scheduled and saved exam record with ID: {}", exam.getExamId());
         return toExamResponse(exam);
     }
@@ -340,6 +340,31 @@ public class ExamService {
         return toExamResponse(exam);
     }
 
+    // 🔐 RESTRICTED: Only ADMIN or EXAM_CONTROLLER (via the ExamController's role check)
+    // may cancel a scheduled exam. Only a SCHEDULED exam can be cancelled — once it has
+    // been CONDUCTED (grades may already be entered/published) or already CANCELLED,
+    // there's nothing left to cancel.
+    @Transactional
+    public ExamDto.Response cancelExam(Long examId) {
+        log.info("Entering cancelExam state transition for examId: {}", examId);
+
+        ExamSchedule exam = examRepository.findById(examId)
+                .orElseThrow(() -> new ResourceNotFoundException("ExamSchedule", "id", examId));
+
+        if (exam.getStatus() != ExamSchedule.ExamStatus.SCHEDULED) {
+            throw new ExamException(
+                    "Status Update Error: Only a SCHEDULED exam can be cancelled. Current status: "
+                            + exam.getStatus() + "."
+            );
+        }
+
+        exam.setStatus(ExamSchedule.ExamStatus.CANCELLED);
+        examRepository.save(exam);
+
+        log.info("Successfully transitioned examId: {} from SCHEDULED to CANCELLED", examId);
+        return toExamResponse(exam);
+    }
+
     @Transactional
     public void publishGrades(Long examId) {
         log.info("Entering publishGrades state migration sequence for examId: {}", examId);
@@ -377,9 +402,9 @@ public class ExamService {
 
             // 🔔 AUTOMATIC NOTIFICATION: Dispatch grade updates straight to each individual student profile
             eventPublisher.publishEvent(new NotificationDto.Event(
-                g.getStudent(),
-                gradeAlertMessage,
-                NotificationCategory.EXAM
+                    g.getStudent(),
+                    gradeAlertMessage,
+                    NotificationCategory.EXAM
             ));
         }
         log.info("Successfully committed state transitions to PUBLISHED status for examId: {}", examId);
@@ -431,7 +456,7 @@ public class ExamService {
 
     @Transactional
     public GradeDto.ResultResponse compileResultCard(Long studentId, String academicYear, Integer semester) {
-        log.info("Entering compileResultCard calculation index flow for studentId: {} [Term: {}, Sem: {}]", 
+        log.info("Entering compileResultCard calculation index flow for studentId: {} [Term: {}, Sem: {}]",
                 studentId, academicYear, semester);
 
         User student = userRepository.findById(studentId)
@@ -507,9 +532,9 @@ public class ExamService {
 
         // 🔔 AUTOMATIC NOTIFICATION: Alert student that their formal term marksheet has been finalized
         eventPublisher.publishEvent(new NotificationDto.Event(
-            student,
-            resultCardAlertMessage,
-            NotificationCategory.EXAM
+                student,
+                resultCardAlertMessage,
+                NotificationCategory.EXAM
         ));
 
         log.info("Successfully compiled result card with dynamic matrix outcomes for studentId: {}", studentId);

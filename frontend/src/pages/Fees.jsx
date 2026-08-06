@@ -170,7 +170,7 @@ export default function Fees() {
               <Button onClick={loadStatus} loading={loading}><Search size={16} /> Load invoices</Button>
             </> : <>
               {canStatus
-                ? <div className="w-64"><span className="label">Student</span><StudentSelect value={studentId} onChange={(id) => setStudentId(id ?? '')} /></div>
+                ? <div className="w-64"><span className="label">Student</span><StudentSelect allStudents value={studentId} onChange={(id) => setStudentId(id ?? '')} /></div>
                 : isStudent
                   ? <div className="w-64"><span className="label">Student</span><div className="field flex items-center" style={{ color: 'var(--text)' }}>{user?.name || 'You'}</div></div>
                   : <div className="w-40"><span className="label">Student ID</span><Input type="number" min={1} max={999999} value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="5" /></div>}

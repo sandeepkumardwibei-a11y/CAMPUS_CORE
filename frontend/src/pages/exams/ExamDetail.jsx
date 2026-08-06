@@ -1,13 +1,13 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, RefreshCw, Plus, Trash2, Save, Send, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, RefreshCw, Plus, Trash2, Save, Send, CheckCircle2, Ban } from 'lucide-react'
 import { ExamApi } from '../../lib/services'
 import { asArray } from '../../lib/hooks'
 import { apiMessage } from '../../lib/api'
 import { useToast } from '../../context/ToastContext'
 import {
   PageHeader, Card, Button, Table, Row, Cell, Badge, Spinner, EmptyState,
-  Field, Input,
+  Field, Input, Modal,
 } from '../../components/ui'
 import { FileSpreadsheet } from 'lucide-react'
 import { FacultySelect } from '../../components/ui/FacultySelect'
@@ -23,6 +23,7 @@ export default function ExamDetail() {
   const canGrade = can(user?.role, 'exam.enterGrades')
   const canMarkConducted = can(user?.role, 'exam.markConducted')
   const canPublish = can(user?.role, 'exam.publish')
+  const canCancel = can(user?.role, 'exam.cancel')
   const [exam, setExam] = useState(null)
   const [grades, setGrades] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -31,6 +32,8 @@ export default function ExamDetail() {
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [marking, setMarking] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const [confirmCancel, setConfirmCancel] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -73,6 +76,11 @@ export default function ExamDetail() {
     try { await ExamApi.publish(id); toast.success('Grades published'); load() }
     catch (e) { toast.error(apiMessage(e)) } finally { setPublishing(false) }
   }
+  const cancelExam = async () => {
+    setCancelling(true)
+    try { await ExamApi.cancel(id); toast.success('Exam cancelled'); setConfirmCancel(false); load() }
+    catch (e) { toast.error(apiMessage(e)) } finally { setCancelling(false) }
+  }
 
   return (
     <div>
@@ -86,8 +94,23 @@ export default function ExamDetail() {
           {canMarkConducted && exam?.status === 'SCHEDULED' && (
             <Button variant="outline" onClick={markConducted} loading={marking}><CheckCircle2 size={15} /> Mark conducted</Button>
           )}
+          {canCancel && exam?.status === 'SCHEDULED' && (
+            <Button variant="danger" onClick={() => setConfirmCancel(true)}><Ban size={15} /> Cancel exam</Button>
+          )}
           {canPublish && <Button onClick={publish} loading={publishing} disabled={exam?.status !== 'CONDUCTED'}><Send size={15} /> Publish grades</Button>}
         </>} />
+
+      <Modal open={confirmCancel} onClose={() => setConfirmCancel(false)} title="Cancel this exam?">
+        <div className="space-y-4">
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            This will mark the exam as CANCELLED. It can no longer be conducted, graded, or published. This cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setConfirmCancel(false)}>Go back</Button>
+            <Button variant="danger" onClick={cancelExam} loading={cancelling}><Ban size={15} /> Yes, cancel exam</Button>
+          </div>
+        </div>
+      </Modal>
 
       {loading ? <Spinner /> : (
         <>

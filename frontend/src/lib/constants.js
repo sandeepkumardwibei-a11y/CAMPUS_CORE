@@ -105,8 +105,9 @@ export const PERMS = {
   // Exams
   'exam.schedule': ['ADMIN', 'EXAM_CONTROLLER'],
   'exam.read': ['ADMIN', 'EXAM_CONTROLLER', 'FACULTY', 'STUDENT'],
-  'exam.enterGrades': ['ADMIN', 'FACULTY'],
+  'exam.enterGrades': ['ADMIN', 'EXAM_CONTROLLER', 'FACULTY'],
   'exam.markConducted': ['ADMIN', 'EXAM_CONTROLLER'],
+  'exam.cancel': ['ADMIN', 'EXAM_CONTROLLER'],
   'exam.publish': ['ADMIN', 'EXAM_CONTROLLER'],
   'exam.examGrades': ['ADMIN', 'EXAM_CONTROLLER', 'FACULTY'],
   'exam.studentGrades': ['ADMIN', 'EXAM_CONTROLLER', 'STUDENT'],

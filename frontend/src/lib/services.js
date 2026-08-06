@@ -89,6 +89,7 @@ export const ExamApi = {
   byCourse: (courseId, academicYear) => g(`/exams/course/${courseId}`, academicYear ? { academicYear } : undefined),
   enterGrades: (examId, facultyId, records) => p(`/exams/${examId}/grades`, records, { facultyId }),
   markConducted: (examId) => u(`/exams/${examId}/conduct`),
+  cancel: (examId) => u(`/exams/${examId}/cancel`),
   publish: (examId) => u(`/exams/${examId}/publish`),
   examGrades: (examId) => g(`/exams/${examId}/grades`),
   studentGrades: (studentId) => g(`/exams/student/${studentId}/grades`),

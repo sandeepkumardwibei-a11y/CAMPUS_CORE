@@ -80,9 +80,9 @@ function MarkAttendance({ toast }) {
           </div>
         )}
         {records.map((r, i) => (
-          <div key={i} className="flex gap-3 items-center">
+          <div key={i} className="flex gap-5 items-center">
             {/* Student name box takes all remaining width so long names stay readable. */}
-            <div className="flex-1 min-w-0">
+            <div className="flex-200 min-w-500">
               <StudentSelect
                 className="truncate"
                 courseScoped
@@ -92,7 +92,7 @@ function MarkAttendance({ toast }) {
               />
             </div>
             <select
-              className="field truncate w-44 shrink-0"
+              className="field truncate w-20 shrink-50"
               value={r.status}
               onChange={(e) => upd(i, 'status', e.target.value)}
             >
@@ -111,12 +111,12 @@ function MarkAttendance({ toast }) {
 }
 
 function StudentSummary({ toast, defaultId, isStudent, studentName }) {
-  const [q, setQ] = useState({ studentId: defaultId || '', academicYear: '' })
+  const [q, setQ] = useState({ studentId: defaultId || '', academicYear: currentAcademicYear() })
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const load = async () => {
     setLoading(true)
-    try { setData(asArray(await AttendanceApi.studentSummary(Number(q.studentId), q.academicYear || undefined))) }
+    try { setData(asArray(await AttendanceApi.studentSummary(Number(q.studentId), q.academicYear || currentAcademicYear()))) }
     catch (e) { toast.error(apiMessage(e)) } finally { setLoading(false) }
   }
   // A logged-in student always looks up their own attendance — auto-load it once

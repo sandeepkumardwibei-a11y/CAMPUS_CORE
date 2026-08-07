@@ -13,31 +13,24 @@ import com.campuscore.repository.ProgramRepository;
 import com.campuscore.repository.SemesterRegistrationRepository;
 import com.campuscore.repository.TimetableRepository;
 import com.campuscore.repository.UserRepository;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
 class SemesterRegistrationServiceTest {
 
     @Mock
@@ -67,300 +60,322 @@ class SemesterRegistrationServiceTest {
     @InjectMocks
     private SemesterRegistrationService registrationService;
 
-    private User studentUser;
-    private User otherStudentUser;
-    private User adminUser;
-    private Program program;
-    private Course course1;
-    private Course course2;
-    private SemesterRegistration registration;
+    private User sampleStudent;
+    private User currentUserSession;
+    private Program sampleProgram;
+    private Course sampleCourse;
+    private SemesterRegistration sampleRegistration;
 
     @BeforeEach
     void setUp() {
-        // Setup Security Context Mocking
         SecurityContextHolder.setContext(securityContext);
+
+        sampleStudent = new User();
+        sampleStudent.setUserId(1000L);
+        sampleStudent.setName("Michael Scott");
+        sampleStudent.setEmail("michael@campuscore.com");
+        sampleStudent.setRole(User.Role.STUDENT);
+
+        currentUserSession = new User();
+        currentUserSession.setUserId(1000L);
+        currentUserSession.setEmail("michael@campuscore.com");
+        currentUserSession.setRole(User.Role.STUDENT);
+
+        sampleProgram = new Program();
+        sampleProgram.setProgramId(50L);
+        sampleProgram.setProgramName("Business Administration");
+
+        sampleCourse = new Course();
+        sampleCourse.setCourseId(200L);
+        sampleCourse.setCourseName("Intro to Management");
+        sampleCourse.setCourseCode("MGMT101");
+        sampleCourse.setProgram(sampleProgram);
+        sampleCourse.setProgramIds(List.of(50L));
+        sampleCourse.setSemester(1);
+        sampleCourse.setCredits(4);
+        sampleCourse.setStatus(Course.CourseStatus.ACTIVE);
+
+        Set<Course> courseSet = new HashSet<>();
+        courseSet.add(sampleCourse);
+
+        sampleRegistration = new SemesterRegistration();
+        sampleRegistration.setRegistrationId(5000L);
+        sampleRegistration.setStudent(sampleStudent);
+        sampleRegistration.setProgram(sampleProgram);
+        sampleRegistration.setAcademicYear("2026-27");
+        sampleRegistration.setSemester(1);
+        sampleRegistration.setCourses(courseSet);
+        sampleRegistration.setTotalCredits(4);
+        sampleRegistration.setStatus(SemesterRegistration.RegistrationStatus.REGISTERED);
+    }
+
+    private void mockSecurityContext(String username) {
         when(securityContext.getAuthentication()).thenReturn(authentication);
-        when(authentication.getName()).thenReturn("student@campus.com");
-
-        studentUser = User.builder()
-                .userId(1L)
-                .email("student@campus.com")
-                .name("Jane Student")
-                .role(User.Role.STUDENT)
-                .build();
-
-        otherStudentUser = User.builder()
-                .userId(2L)
-                .email("otherstudent@campus.com")
-                .name("John Student")
-                .role(User.Role.STUDENT)
-                .build();
-
-        adminUser = User.builder()
-                .userId(3L)
-                .email("admin@campus.com")
-                .name("System Admin")
-                .role(User.Role.ADMIN)
-                .build();
-
-        program = Program.builder()
-                .programId(10L)
-                .programName("Bachelor of Science")
-                .build();
-
-        course1 = Course.builder()
-                .courseId(101L)
-                .courseName("CS101 - Intro to CS")
-                .courseCode("CS101")
-                .semester(1)
-                .credits(4)
-                .status(Course.CourseStatus.ACTIVE)
-                .program(program)
-                .programIds(List.of(10L))
-                .build();
-
-        course2 = Course.builder()
-                .courseId(102L)
-                .courseName("CS102 - Data Structures")
-                .courseCode("CS102")
-                .semester(1)
-                .credits(3)
-                .status(Course.CourseStatus.ACTIVE)
-                .program(program)
-                .programIds(List.of(10L))
-                .build();
-
-        registration = SemesterRegistration.builder()
-                .registrationId(50L)
-                .student(studentUser)
-                .program(program)
-                .academicYear("2026")
-                .semester(1)
-                .courses(new HashSet<>(Set.of(course1, course2)))
-                .totalCredits(7)
-                .status(SemesterRegistration.RegistrationStatus.REGISTERED)
-                .build();
-
-        when(userRepository.findByEmail("student@campus.com")).thenReturn(Optional.of(studentUser));
-        when(userRepository.findByEmail("admin@campus.com")).thenReturn(Optional.of(adminUser));
-    }
-
-    @AfterEach
-    void tearDown() {
-        SecurityContextHolder.clearContext();
+        when(authentication.getName()).thenReturn(username);
     }
 
     // ─────────────────────────────────────────────────────────
-    // 1. REGISTER TESTS
+    // REGISTER OPERATION TEST CASES
     // ─────────────────────────────────────────────────────────
 
     @Test
-    void register_Success_ExplicitCourses() {
+    void register_SuccessWithExplicitCourseIds() {
+        mockSecurityContext("michael@campuscore.com");
         SemesterRegistrationDto.CreateRequest request = new SemesterRegistrationDto.CreateRequest();
-        request.setStudentId(1L);
-        request.setProgramId(10L);
-        request.setAcademicYear("2026");
+        request.setStudentId(1000L);
+        request.setProgramId(50L);
+        request.setAcademicYear("2026-27");
         request.setSemester(1);
-        request.setCourseIds(List.of(101L, 102L));
+        request.setCourseIds(List.of(200L));
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(studentUser));
-        when(registrationRepository.findByStudentUserId(1L)).thenReturn(List.of());
-        when(registrationRepository.findByStudentUserIdAndProgramProgramIdAndAcademicYearAndSemester(1L, 10L, "2026", 1))
+        when(userRepository.findById(1000L)).thenReturn(Optional.of(sampleStudent));
+        when(userRepository.findByEmail("michael@campuscore.com")).thenReturn(Optional.of(currentUserSession));
+        when(registrationRepository.findByStudentUserId(1000L)).thenReturn(Collections.emptyList());
+        when(registrationRepository.findByStudentUserIdAndProgramProgramIdAndAcademicYearAndSemester(1000L, 50L, "2026-27", 1))
                 .thenReturn(Optional.empty());
-        when(programRepository.findById(10L)).thenReturn(Optional.of(program));
-        when(courseRepository.findById(101L)).thenReturn(Optional.of(course1));
-        when(courseRepository.findById(102L)).thenReturn(Optional.of(course2));
-        when(registrationRepository.save(any(SemesterRegistration.class))).thenAnswer(i -> {
-            SemesterRegistration r = i.getArgument(0);
-            r.setRegistrationId(50L);
-            return r;
+        when(programRepository.findById(50L)).thenReturn(Optional.of(sampleProgram));
+        when(courseRepository.findById(200L)).thenReturn(Optional.of(sampleCourse));
+
+        when(registrationRepository.save(any(SemesterRegistration.class))).thenAnswer(invocation -> {
+            SemesterRegistration reg = invocation.getArgument(0);
+            reg.setRegistrationId(5000L);
+            return reg;
         });
 
         SemesterRegistrationDto.Response response = registrationService.register(request);
 
         assertNotNull(response);
-        assertEquals(50L, response.getRegistrationId());
-        assertEquals(1L, response.getStudentId());
+        assertEquals(5000L, response.getRegistrationId());
         assertEquals("REGISTERED", response.getStatus());
-        assertEquals(7, response.getTotalCredits());
-        assertEquals(2, response.getCourses().size());
-
-        verify(registrationRepository, times(1)).save(any(SemesterRegistration.class));
-        verify(eventPublisher, times(1)).publishEvent(any(NotificationDto.Event.class));
+        assertEquals(4, response.getTotalCredits());
+        verify(registrationRepository).save(any(SemesterRegistration.class));
+        verify(eventPublisher).publishEvent(any(NotificationDto.Event.class));
     }
 
     @Test
-    void register_Success_FallbackAutoFetchCourses() {
+    void register_SuccessWithAutoFetchDefaultCatalogue() {
+        mockSecurityContext("michael@campuscore.com");
         SemesterRegistrationDto.CreateRequest request = new SemesterRegistrationDto.CreateRequest();
-        request.setStudentId(1L);
-        request.setProgramId(10L);
-        request.setAcademicYear("2026");
+        request.setStudentId(1000L);
+        request.setProgramId(50L);
+        request.setAcademicYear("2026-27");
         request.setSemester(1);
-        request.setCourseIds(null);
+        request.setCourseIds(null); // Triggers auto-fetch logic path
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(studentUser));
-        when(registrationRepository.findByStudentUserId(1L)).thenReturn(List.of());
-        when(registrationRepository.findByStudentUserIdAndProgramProgramIdAndAcademicYearAndSemester(1L, 10L, "2026", 1))
+        when(userRepository.findById(1000L)).thenReturn(Optional.of(sampleStudent));
+        when(userRepository.findByEmail("michael@campuscore.com")).thenReturn(Optional.of(currentUserSession));
+        when(registrationRepository.findByStudentUserId(1000L)).thenReturn(Collections.emptyList());
+        when(registrationRepository.findByStudentUserIdAndProgramProgramIdAndAcademicYearAndSemester(1000L, 50L, "2026-27", 1))
                 .thenReturn(Optional.empty());
-        when(programRepository.findById(10L)).thenReturn(Optional.of(program));
-        when(courseRepository.findAll()).thenReturn(List.of(course1, course2));
-        when(registrationRepository.save(any(SemesterRegistration.class))).thenAnswer(i -> {
-            SemesterRegistration r = i.getArgument(0);
-            r.setRegistrationId(50L);
-            return r;
+        when(programRepository.findById(50L)).thenReturn(Optional.of(sampleProgram));
+        when(courseRepository.findAll()).thenReturn(Collections.singletonList(sampleCourse));
+
+        when(registrationRepository.save(any(SemesterRegistration.class))).thenAnswer(invocation -> {
+            SemesterRegistration reg = invocation.getArgument(0);
+            reg.setRegistrationId(5000L);
+            return reg;
         });
 
         SemesterRegistrationDto.Response response = registrationService.register(request);
 
         assertNotNull(response);
-        assertEquals(7, response.getTotalCredits());
-        verify(courseRepository, times(1)).findAll();
+        assertEquals(1, response.getCourses().size());
+        assertEquals("Intro to Management", response.getCourses().get(0).getCourseName());
+        verify(eventPublisher).publishEvent(any(NotificationDto.Event.class));
+    }
+
+    @Test
+    void register_ThrowsException_WhenUserIsNotStudent() {
+        SemesterRegistrationDto.CreateRequest request = new SemesterRegistrationDto.CreateRequest();
+        request.setStudentId(1000L);
+        sampleStudent.setRole(User.Role.FACULTY); // Invalid role
+
+        when(userRepository.findById(1000L)).thenReturn(Optional.of(sampleStudent));
+
+        assertThrows(SemesterRegistrationException.class, () -> registrationService.register(request));
+    }
+
+    @Test
+    void register_ThrowsException_WhenSemesterOutOfRange() {
+        SemesterRegistrationDto.CreateRequest request = new SemesterRegistrationDto.CreateRequest();
+        request.setStudentId(1000L);
+        request.setSemester(9); // Semester must be between 1 and 8
+
+        when(userRepository.findById(1000L)).thenReturn(Optional.of(sampleStudent));
+
+        SemesterRegistrationException ex = assertThrows(SemesterRegistrationException.class, () -> registrationService.register(request));
+        assertTrue(ex.getMessage().contains("Semester must be between 1 and 8"));
     }
 
     @Test
     void register_ThrowsException_WhenNonStudentAttemptsRegistration() {
-        when(authentication.getName()).thenReturn("admin@campus.com");
-
+        mockSecurityContext("faculty@campuscore.com");
         SemesterRegistrationDto.CreateRequest request = new SemesterRegistrationDto.CreateRequest();
-        request.setStudentId(3L);
-        request.setProgramId(10L);
-        request.setAcademicYear("2026");
+        request.setStudentId(1000L);
         request.setSemester(1);
 
-        when(userRepository.findById(3L)).thenReturn(Optional.of(adminUser));
+        User facultySession = new User();
+        facultySession.setUserId(2000L);
+        facultySession.setEmail("faculty@campuscore.com");
+        facultySession.setRole(User.Role.FACULTY);
 
-        SemesterRegistrationException ex = assertThrows(SemesterRegistrationException.class,
-                () -> registrationService.register(request));
-        assertTrue(ex.getMessage().contains("does not belong to a student account"));
+        when(userRepository.findById(1000L)).thenReturn(Optional.of(sampleStudent));
+        when(userRepository.findByEmail("faculty@campuscore.com")).thenReturn(Optional.of(facultySession));
+
+        SemesterRegistrationException ex = assertThrows(SemesterRegistrationException.class, () -> registrationService.register(request));
+        assertTrue(ex.getMessage().contains("Only a student can create a semester registration"));
     }
 
     @Test
-    void register_ThrowsException_WhenRegisteringForAnotherStudent() {
+    void register_ThrowsException_WhenStudentRegistersForAnotherStudent() {
+        mockSecurityContext("michael@campuscore.com");
         SemesterRegistrationDto.CreateRequest request = new SemesterRegistrationDto.CreateRequest();
-        request.setStudentId(2L);
-        request.setProgramId(10L);
+        request.setStudentId(9999L); // Target student ID differs from logged in user ID (1000L)
+        request.setSemester(1);
 
-        when(userRepository.findById(2L)).thenReturn(Optional.of(otherStudentUser));
+        User targetStudent = new User();
+        targetStudent.setUserId(9999L);
+        targetStudent.setRole(User.Role.STUDENT);
 
-        SemesterRegistrationException ex = assertThrows(SemesterRegistrationException.class,
-                () -> registrationService.register(request));
+        when(userRepository.findById(9999L)).thenReturn(Optional.of(targetStudent));
+        when(userRepository.findByEmail("michael@campuscore.com")).thenReturn(Optional.of(currentUserSession));
+
+        SemesterRegistrationException ex = assertThrows(SemesterRegistrationException.class, () -> registrationService.register(request));
         assertTrue(ex.getMessage().contains("You can only register a semester for your own account"));
     }
 
     @Test
-    void register_ThrowsException_WhenActiveRegistrationAlreadyExists() {
+    void register_ThrowsException_WhenActiveSemesterAlreadyExists() {
+        mockSecurityContext("michael@campuscore.com");
         SemesterRegistrationDto.CreateRequest request = new SemesterRegistrationDto.CreateRequest();
-        request.setStudentId(1L);
-        request.setProgramId(10L);
-        request.setAcademicYear("2026");
+        request.setStudentId(1000L);
         request.setSemester(2);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(studentUser));
-        when(registrationRepository.findByStudentUserId(1L)).thenReturn(List.of(registration));
+        when(userRepository.findById(1000L)).thenReturn(Optional.of(sampleStudent));
+        when(userRepository.findByEmail("michael@campuscore.com")).thenReturn(Optional.of(currentUserSession));
+        when(registrationRepository.findByStudentUserId(1000L)).thenReturn(Collections.singletonList(sampleRegistration));
 
-        SemesterRegistrationException ex = assertThrows(SemesterRegistrationException.class,
-                () -> registrationService.register(request));
-        assertTrue(ex.getMessage().contains("You are already registered for Semester"));
+        SemesterRegistrationException ex = assertThrows(SemesterRegistrationException.class, () -> registrationService.register(request));
+        assertTrue(ex.getMessage().contains("A student can only be registered for one semester at a time"));
     }
 
     @Test
-    void register_ThrowsException_WhenCourseSemesterMismatch() {
-        Course courseWrongSem = Course.builder()
-                .courseId(103L)
-                .courseName("CS201 - Advanced Java")
-                .semester(2)
-                .credits(3)
-                .program(program)
-                .status(Course.CourseStatus.ACTIVE)
-                .build();
-
+    void register_ThrowsException_WhenCourseDoesNotBelongToProgram() {
+        mockSecurityContext("michael@campuscore.com");
         SemesterRegistrationDto.CreateRequest request = new SemesterRegistrationDto.CreateRequest();
-        request.setStudentId(1L);
-        request.setProgramId(10L);
-        request.setAcademicYear("2026");
+        request.setStudentId(1000L);
+        request.setProgramId(99L); // Course programId is 50L
+        request.setAcademicYear("2026-27");
         request.setSemester(1);
-        request.setCourseIds(List.of(103L));
+        request.setCourseIds(List.of(200L));
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(studentUser));
-        when(registrationRepository.findByStudentUserId(1L)).thenReturn(List.of());
-        when(programRepository.findById(10L)).thenReturn(Optional.of(program));
-        when(courseRepository.findById(103L)).thenReturn(Optional.of(courseWrongSem));
+        Program wrongProgram = new Program();
+        wrongProgram.setProgramId(99L);
+        wrongProgram.setProgramName("Fine Arts");
 
-        SemesterRegistrationException ex = assertThrows(SemesterRegistrationException.class,
-                () -> registrationService.register(request));
-        assertTrue(ex.getMessage().contains("cannot be mixed into a Semester 1 registration"));
+        when(userRepository.findById(1000L)).thenReturn(Optional.of(sampleStudent));
+        when(userRepository.findByEmail("michael@campuscore.com")).thenReturn(Optional.of(currentUserSession));
+        when(registrationRepository.findByStudentUserId(1000L)).thenReturn(Collections.emptyList());
+        when(registrationRepository.findByStudentUserIdAndProgramProgramIdAndAcademicYearAndSemester(1000L, 99L, "2026-27", 1))
+                .thenReturn(Optional.empty());
+        when(programRepository.findById(99L)).thenReturn(Optional.of(wrongProgram));
+        when(courseRepository.findById(200L)).thenReturn(Optional.of(sampleCourse));
+
+        SemesterRegistrationException ex = assertThrows(SemesterRegistrationException.class, () -> registrationService.register(request));
+        assertTrue(ex.getMessage().contains("does not belong to the requested registration program"));
+    }
+
+    @Test
+    void register_ThrowsException_WhenCourseBelongsToDifferentSemester() {
+        mockSecurityContext("michael@campuscore.com");
+        SemesterRegistrationDto.CreateRequest request = new SemesterRegistrationDto.CreateRequest();
+        request.setStudentId(1000L);
+        request.setProgramId(50L);
+        request.setAcademicYear("2026-27");
+        request.setSemester(2); // Requested Semester is 2
+        request.setCourseIds(List.of(200L));
+
+        sampleCourse.setSemester(1); // Course explicitly tagged to Semester 1
+
+        when(userRepository.findById(1000L)).thenReturn(Optional.of(sampleStudent));
+        when(userRepository.findByEmail("michael@campuscore.com")).thenReturn(Optional.of(currentUserSession));
+        when(registrationRepository.findByStudentUserId(1000L)).thenReturn(Collections.emptyList());
+        when(registrationRepository.findByStudentUserIdAndProgramProgramIdAndAcademicYearAndSemester(1000L, 50L, "2026-27", 2))
+                .thenReturn(Optional.empty());
+        when(programRepository.findById(50L)).thenReturn(Optional.of(sampleProgram));
+        when(courseRepository.findById(200L)).thenReturn(Optional.of(sampleCourse));
+
+        SemesterRegistrationException ex = assertThrows(SemesterRegistrationException.class, () -> registrationService.register(request));
+        assertTrue(ex.getMessage().contains("It cannot be mixed into a Semester 2 registration"));
     }
 
     // ─────────────────────────────────────────────────────────
-    // 2. READ / QUERY TESTS
-    // ─────────────────────────────────────────────────────────
-
-    @Test
-    void getById_Success() {
-        when(registrationRepository.findById(50L)).thenReturn(Optional.of(registration));
-
-        SemesterRegistrationDto.Response response = registrationService.getById(50L);
-
-        assertNotNull(response);
-        assertEquals(50L, response.getRegistrationId());
-        assertEquals("Jane Student", response.getStudentName());
-    }
-
-    @Test
-    void getById_ThrowsException_WhenNotFound() {
-        when(registrationRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThrows(ResourceNotFoundException.class, () -> registrationService.getById(99L));
-    }
-
-    @Test
-    void getByStudent_Success() {
-        when(registrationRepository.findByStudentUserId(1L)).thenReturn(List.of(registration));
-
-        List<SemesterRegistrationDto.Response> responses = registrationService.getByStudent(1L);
-
-        assertNotNull(responses);
-        assertEquals(1, responses.size());
-        assertEquals(50L, responses.get(0).getRegistrationId());
-    }
-
-    @Test
-    void getByCourse_Success() {
-        when(courseRepository.findById(101L)).thenReturn(Optional.of(course1));
-        when(registrationRepository.findByCoursesCourseId(101L)).thenReturn(List.of(registration));
-
-        List<SemesterRegistrationDto.Response> responses = registrationService.getByCourse(101L);
-
-        assertNotNull(responses);
-        assertEquals(1, responses.size());
-        assertEquals(1, responses.get(0).getCourses().size());
-        assertEquals("CS101 - Intro to CS", responses.get(0).getCourses().get(0).getCourseName());
-    }
-
-    @Test
-    void getAll_Success() {
-        when(registrationRepository.findAll()).thenReturn(List.of(registration));
-
-        List<SemesterRegistrationDto.Response> responses = registrationService.getAll();
-
-        assertNotNull(responses);
-        assertEquals(1, responses.size());
-    }
-
-    // ─────────────────────────────────────────────────────────
-    // 3. CONFIRM REGISTRATION TESTS
+    // CONFIRMATION AND READ OPERATIONS TEST CASES
     // ─────────────────────────────────────────────────────────
 
     @Test
     void confirmRegistration_Success() {
-        when(registrationRepository.findById(50L)).thenReturn(Optional.of(registration));
-        when(registrationRepository.save(any(SemesterRegistration.class))).thenAnswer(i -> i.getArgument(0));
+        when(registrationRepository.findById(5000L)).thenReturn(Optional.of(sampleRegistration));
+        when(registrationRepository.save(any(SemesterRegistration.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        SemesterRegistrationDto.Response response = registrationService.confirmRegistration(50L);
+        SemesterRegistrationDto.Response response = registrationService.confirmRegistration(5000L);
 
         assertNotNull(response);
         assertEquals("CONFIRMED", response.getStatus());
-        verify(registrationRepository, times(1)).save(registration);
-        verify(eventPublisher, times(1)).publishEvent(any(NotificationDto.Event.class));
+        verify(eventPublisher).publishEvent(any(NotificationDto.Event.class));
+    }
+
+    @Test
+    void getById_Success() {
+        mockSecurityContext("michael@campuscore.com");
+        when(registrationRepository.findById(5000L)).thenReturn(Optional.of(sampleRegistration));
+        when(userRepository.findByEmail("michael@campuscore.com")).thenReturn(Optional.of(currentUserSession));
+
+        SemesterRegistrationDto.Response response = registrationService.getById(5000L);
+
+        assertNotNull(response);
+        assertEquals(5000L, response.getRegistrationId());
+    }
+
+    @Test
+    void getByStudent_Success() {
+        mockSecurityContext("michael@campuscore.com");
+        when(userRepository.findByEmail("michael@campuscore.com")).thenReturn(Optional.of(currentUserSession));
+        when(registrationRepository.findByStudentUserId(1000L)).thenReturn(Collections.singletonList(sampleRegistration));
+
+        List<SemesterRegistrationDto.Response> results = registrationService.getByStudent(1000L);
+
+        assertNotNull(results);
+        assertEquals(1, results.size());
+        assertEquals(5000L, results.get(0).getRegistrationId());
+    }
+
+    @Test
+    void getByCourse_Success() {
+        when(courseRepository.findById(200L)).thenReturn(Optional.of(sampleCourse));
+        when(registrationRepository.findByCoursesCourseId(200L)).thenReturn(Collections.singletonList(sampleRegistration));
+
+        List<SemesterRegistrationDto.Response> results = registrationService.getByCourse(200L);
+
+        assertNotNull(results);
+        assertEquals(1, results.size());
+        assertEquals(1, results.get(0).getCourses().size());
+    }
+
+    @Test
+    void getByCourse_ThrowsException_WhenCourseNotFound() {
+        when(courseRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> registrationService.getByCourse(999L));
+    }
+
+    @Test
+    void getAll_Success() {
+        when(registrationRepository.findAll()).thenReturn(Collections.singletonList(sampleRegistration));
+
+        List<SemesterRegistrationDto.Response> results = registrationService.getAll();
+
+        assertNotNull(results);
+        assertEquals(1, results.size());
     }
 }

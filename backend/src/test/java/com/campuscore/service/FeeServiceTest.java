@@ -4,21 +4,19 @@ import com.campuscore.dto.FeeDto;
 import com.campuscore.dto.NotificationDto;
 import com.campuscore.entity.FeeInvoice;
 import com.campuscore.entity.FeePayment;
+import com.campuscore.entity.SemesterRegistration;
 import com.campuscore.entity.User;
 import com.campuscore.exception.FeeException;
-import com.campuscore.exception.ResourceNotFoundException;
 import com.campuscore.repository.FeeInvoiceRepository;
 import com.campuscore.repository.FeePaymentRepository;
+import com.campuscore.repository.SemesterRegistrationRepository;
 import com.campuscore.repository.UserRepository;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -28,11 +26,11 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -42,7 +40,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
 class FeeServiceTest {
 
     @Mock
@@ -53,6 +50,9 @@ class FeeServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private SemesterRegistrationRepository semesterRegistrationRepository;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -66,248 +66,363 @@ class FeeServiceTest {
     @Mock
     private Authentication authentication;
 
-    @Mock
-    private UserDetails userDetails;
-
     @InjectMocks
     private FeeService feeService;
 
-    private User studentUser;
-    private User accountsUser;
+    private User sampleStudent;
+    private User currentUserSession;
     private FeeInvoice sampleInvoice;
     private FeePayment samplePayment;
+    private SemesterRegistration sampleRegistration;
 
     @BeforeEach
     void setUp() {
         SecurityContextHolder.setContext(securityContext);
 
-        studentUser = User.builder()
-                .userId(1L)
-                .name("John Doe")
-                .email("student@campuscore.com")
-                .role(User.Role.STUDENT)
-                .build();
+        sampleStudent = new User();
+        sampleStudent.setUserId(700L);
+        sampleStudent.setName("Alice Green");
+        sampleStudent.setEmail("alice@campuscore.com");
+        sampleStudent.setRole(User.Role.STUDENT);
 
-        accountsUser = User.builder()
-                .userId(2L)
-                .name("Accounts Officer")
-                .email("accounts@campuscore.com")
-                .role(User.Role.ACCOUNTS)
-                .build();
+        currentUserSession = new User();
+        currentUserSession.setUserId(700L);
+        currentUserSession.setName("Alice Green");
+        currentUserSession.setEmail("alice@campuscore.com");
+        currentUserSession.setRole(User.Role.STUDENT);
 
-        sampleInvoice = FeeInvoice.builder()
-                .invoiceId(10L)
-                .student(studentUser)
-                .academicYear("2025-2026")
-                .semester(1)
-                .tuitionFee(BigDecimal.valueOf(50000))
-                .libraryFee(BigDecimal.valueOf(2000))
-                .labFee(BigDecimal.valueOf(3000))
-                .activityFee(BigDecimal.valueOf(1000))
-                .totalAmount(BigDecimal.valueOf(56000))
-                .scholarshipAdjusted(BigDecimal.valueOf(6000))
-                .netPayable(BigDecimal.valueOf(50000))
-                .dueDate(LocalDate.now().plusDays(30))
-                .status(FeeInvoice.InvoiceStatus.GENERATED)
-                .build();
+        sampleRegistration = new SemesterRegistration();
+        sampleRegistration.setStudent(sampleStudent);
+        sampleRegistration.setAcademicYear("2026-27");
+        sampleRegistration.setSemester(1);
+        sampleRegistration.setStatus(SemesterRegistration.RegistrationStatus.REGISTERED);
 
-        samplePayment = FeePayment.builder()
-                .paymentId(100L)
-                .invoice(sampleInvoice)
-                .paidAmount(BigDecimal.valueOf(20000))
-                .paymentDate(LocalDate.now())
-                .mode(FeePayment.PaymentMode.BANK_TRANSFER)
-                .referenceNo("REF123456")
-                .receiptNumber("RCPT-12345678")
-                .status(FeePayment.PaymentStatus.RECEIVED)
-                .build();
+        sampleInvoice = new FeeInvoice();
+        sampleInvoice.setInvoiceId(800L);
+        sampleInvoice.setStudent(sampleStudent);
+        sampleInvoice.setAcademicYear("2026-27");
+        sampleInvoice.setSemester(1);
+        sampleInvoice.setTuitionFee(new BigDecimal("50000.00"));
+        sampleInvoice.setLibraryFee(new BigDecimal("2000.00"));
+        sampleInvoice.setLabFee(new BigDecimal("3000.00"));
+        sampleInvoice.setActivityFee(new BigDecimal("1000.00"));
+        sampleInvoice.setTotalAmount(new BigDecimal("56000.00"));
+        sampleInvoice.setScholarshipAdjusted(new BigDecimal("6000.00"));
+        sampleInvoice.setNetPayable(new BigDecimal("50000.00"));
+        sampleInvoice.setDueDate(LocalDate.now().plusDays(30));
+        sampleInvoice.setStatus(FeeInvoice.InvoiceStatus.GENERATED);
+
+        samplePayment = new FeePayment();
+        samplePayment.setPaymentId(900L);
+        samplePayment.setInvoice(sampleInvoice);
+        samplePayment.setPaidAmount(new BigDecimal("50000.00"));
+        samplePayment.setPaymentDate(LocalDate.now());
+        samplePayment.setMode(FeePayment.PaymentMode.UPI);
+        samplePayment.setReferenceNo("TXN12345");
+        samplePayment.setReceiptNumber("RCPT-MARK123");
+        samplePayment.setStatus(FeePayment.PaymentStatus.RECEIVED);
     }
 
-    @AfterEach
-    void tearDown() {
-        SecurityContextHolder.clearContext();
-    }
-
-    private void mockSecurityUser(User user) {
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-        when(authentication.getPrincipal()).thenReturn(userDetails);
-        when(userDetails.getUsername()).thenReturn(user.getEmail());
-        when(authentication.getName()).thenReturn(user.getEmail());
-        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+    private void mockSecurityContext(String username) {
+        // 💡 FIX: Using lenient() so helper stubbing works seamlessly whether
+        // getPrincipal() or getName() is called by the underlying service method.
+        lenient().when(securityContext.getAuthentication()).thenReturn(authentication);
+        lenient().when(authentication.getPrincipal()).thenReturn(username);
+        lenient().when(authentication.getName()).thenReturn(username);
     }
 
     // ─────────────────────────────────────────────────────────
-    // 1. GENERATE INVOICE TESTS
+    // INVOICE GENERATION TEST CASES
     // ─────────────────────────────────────────────────────────
 
     @Test
     void generateInvoice_Success() {
-        FeeDto.InvoiceCreateRequest req = new FeeDto.InvoiceCreateRequest();
-        req.setStudentId(1L);
-        req.setAcademicYear("2025-2026");
-        req.setSemester(1);
-        req.setTuitionFee(BigDecimal.valueOf(50000));
-        req.setLibraryFee(BigDecimal.valueOf(2000));
-        req.setLabFee(BigDecimal.valueOf(3000));
-        req.setActivityFee(BigDecimal.valueOf(1000));
-        req.setScholarshipAdjusted(BigDecimal.valueOf(6000));
-        req.setDueDate(LocalDate.now().plusDays(30));
+        FeeDto.InvoiceCreateRequest request = new FeeDto.InvoiceCreateRequest();
+        request.setStudentId(700L);
+        request.setAcademicYear("2026-27");
+        request.setSemester(1);
+        request.setTuitionFee(new BigDecimal("50000.00"));
+        request.setLibraryFee(new BigDecimal("2000.00"));
+        request.setLabFee(new BigDecimal("3000.00"));
+        request.setActivityFee(new BigDecimal("1000.00"));
+        request.setScholarshipAdjusted(new BigDecimal("6000.00"));
+        request.setDueDate(LocalDate.now().plusDays(30));
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(studentUser));
-        when(invoiceRepository.findByStudentUserIdAndAcademicYearAndSemester(1L, "2025-2026", 1))
+        when(userRepository.findById(700L)).thenReturn(Optional.of(sampleStudent));
+        when(semesterRegistrationRepository.findByStudentUserIdAndAcademicYearAndSemester(700L, "2026-27", 1))
+                .thenReturn(Collections.singletonList(sampleRegistration));
+        when(invoiceRepository.findByStudentUserIdAndAcademicYearAndSemester(700L, "2026-27", 1))
                 .thenReturn(Optional.empty());
-        when(invoiceRepository.save(any(FeeInvoice.class))).thenReturn(sampleInvoice);
 
-        FeeDto.InvoiceResponse response = feeService.generateInvoice(req);
+        when(invoiceRepository.save(any(FeeInvoice.class))).thenAnswer(invocation -> {
+            FeeInvoice invoice = invocation.getArgument(0);
+            invoice.setInvoiceId(800L);
+            return invoice;
+        });
+
+        FeeDto.InvoiceResponse response = feeService.generateInvoice(request);
 
         assertNotNull(response);
-        assertEquals(BigDecimal.valueOf(50000), response.getNetPayable());
-        verify(invoiceRepository, times(1)).save(any(FeeInvoice.class));
-        verify(eventPublisher, times(1)).publishEvent(any(NotificationDto.Event.class));
+        assertEquals(800L, response.getInvoiceId());
+        assertEquals(0, response.getNetPayable().compareTo(new BigDecimal("50000.00")));
+        assertEquals("GENERATED", response.getStatus());
+        verify(invoiceRepository).save(any(FeeInvoice.class));
+        verify(eventPublisher).publishEvent(any(NotificationDto.Event.class));
     }
 
     @Test
-    void generateInvoice_ThrowsException_WhenDuplicateInvoice() {
-        FeeDto.InvoiceCreateRequest req = new FeeDto.InvoiceCreateRequest();
-        req.setStudentId(1L);
-        req.setAcademicYear("2025-2026");
-        req.setSemester(1);
+    void generateInvoice_ThrowsException_WhenUserIsNotStudent() {
+        FeeDto.InvoiceCreateRequest request = new FeeDto.InvoiceCreateRequest();
+        request.setStudentId(700L);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(studentUser));
-        when(invoiceRepository.findByStudentUserIdAndAcademicYearAndSemester(1L, "2025-2026", 1))
+        sampleStudent.setRole(User.Role.FACULTY);
+        when(userRepository.findById(700L)).thenReturn(Optional.of(sampleStudent));
+
+        FeeException ex = assertThrows(FeeException.class, () -> feeService.generateInvoice(request));
+        assertTrue(ex.getMessage().contains("is not a student account"));
+    }
+
+    @Test
+    void generateInvoice_ThrowsException_WhenNotRegisteredForSemester() {
+        FeeDto.InvoiceCreateRequest request = new FeeDto.InvoiceCreateRequest();
+        request.setStudentId(700L);
+        request.setAcademicYear("2026-27");
+        request.setSemester(1);
+
+        when(userRepository.findById(700L)).thenReturn(Optional.of(sampleStudent));
+        when(semesterRegistrationRepository.findByStudentUserIdAndAcademicYearAndSemester(700L, "2026-27", 1))
+                .thenReturn(Collections.emptyList());
+
+        FeeException ex = assertThrows(FeeException.class, () -> feeService.generateInvoice(request));
+        assertTrue(ex.getMessage().contains("Please complete semester registration first"));
+    }
+
+    @Test
+    void generateInvoice_ThrowsException_WhenInvoiceAlreadyExists() {
+        FeeDto.InvoiceCreateRequest request = new FeeDto.InvoiceCreateRequest();
+        request.setStudentId(700L);
+        request.setAcademicYear("2026-27");
+        request.setSemester(1);
+
+        when(userRepository.findById(700L)).thenReturn(Optional.of(sampleStudent));
+        when(semesterRegistrationRepository.findByStudentUserIdAndAcademicYearAndSemester(700L, "2026-27", 1))
+                .thenReturn(Collections.singletonList(sampleRegistration));
+        when(invoiceRepository.findByStudentUserIdAndAcademicYearAndSemester(700L, "2026-27", 1))
                 .thenReturn(Optional.of(sampleInvoice));
 
-        assertThrows(FeeException.class, () -> feeService.generateInvoice(req));
+        FeeException ex = assertThrows(FeeException.class, () -> feeService.generateInvoice(request));
+        assertTrue(ex.getMessage().contains("Invoice already exists"));
     }
 
     // ─────────────────────────────────────────────────────────
-    // 2. RECORD PAYMENT TESTS
+    // PAYMENT RECORDING TEST CASES
     // ─────────────────────────────────────────────────────────
 
     @Test
-    void recordPayment_Success() {
-        mockSecurityUser(studentUser);
+    void recordPayment_FullPaymentSuccess() {
+        mockSecurityContext("alice@campuscore.com");
 
-        FeeDto.PaymentRequest req = new FeeDto.PaymentRequest();
-        req.setInvoiceId(10L);
-        req.setPaidAmount(BigDecimal.valueOf(20000));
-        req.setMode("ONLINE");
-        req.setReferenceNo("TXN12345");
+        FeeDto.PaymentRequest request = new FeeDto.PaymentRequest();
+        request.setInvoiceId(800L);
+        request.setPaidAmount(new BigDecimal("50000.00"));
+        request.setMode("upi");
+        request.setReferenceNo("TXN12345");
 
-        when(invoiceRepository.findById(10L)).thenReturn(Optional.of(sampleInvoice));
-        when(paymentRepository.save(any(FeePayment.class))).thenReturn(samplePayment);
+        when(userRepository.findByEmail("alice@campuscore.com")).thenReturn(Optional.of(currentUserSession));
+        when(invoiceRepository.findById(800L)).thenReturn(Optional.of(sampleInvoice));
 
-        FeeDto.PaymentResponse response = feeService.recordPayment(req);
+        when(paymentRepository.save(any(FeePayment.class))).thenAnswer(invocation -> {
+            FeePayment payment = invocation.getArgument(0);
+            payment.setPaymentId(900L);
+            return payment;
+        });
+
+        FeeDto.PaymentResponse response = feeService.recordPayment(request);
 
         assertNotNull(response);
-        verify(paymentRepository, times(1)).save(any(FeePayment.class));
-        verify(invoiceRepository, times(1)).save(sampleInvoice);
-        verify(eventPublisher, times(1)).publishEvent(any(NotificationDto.Event.class));
+        assertEquals(900L, response.getPaymentId());
+        assertEquals("RECEIVED", response.getStatus());
+        assertEquals(FeeInvoice.InvoiceStatus.PAID, sampleInvoice.getStatus());
+        assertEquals(0, sampleInvoice.getNetPayable().compareTo(BigDecimal.ZERO));
+        verify(invoiceRepository).save(sampleInvoice);
+        verify(eventPublisher).publishEvent(any(NotificationDto.Event.class));
     }
 
     @Test
-    void recordPayment_ThrowsException_WhenAmountExceedsDues() {
-        mockSecurityUser(studentUser);
+    void recordPayment_PartialPaymentSuccess() {
+        mockSecurityContext("alice@campuscore.com");
 
-        FeeDto.PaymentRequest req = new FeeDto.PaymentRequest();
-        req.setInvoiceId(10L);
-        req.setPaidAmount(BigDecimal.valueOf(60000)); // Exceeds 50000 net payable
-        req.setMode("ONLINE");
+        FeeDto.PaymentRequest request = new FeeDto.PaymentRequest();
+        request.setInvoiceId(800L);
+        request.setPaidAmount(new BigDecimal("20000.00"));
+        request.setMode("card");
 
-        when(invoiceRepository.findById(10L)).thenReturn(Optional.of(sampleInvoice));
+        when(userRepository.findByEmail("alice@campuscore.com")).thenReturn(Optional.of(currentUserSession));
+        when(invoiceRepository.findById(800L)).thenReturn(Optional.of(sampleInvoice));
 
-        assertThrows(FeeException.class, () -> feeService.recordPayment(req));
+        feeService.recordPayment(request);
+
+        assertEquals(FeeInvoice.InvoiceStatus.PARTIALLY_PAID, sampleInvoice.getStatus());
+        assertEquals(0, sampleInvoice.getNetPayable().compareTo(new BigDecimal("30000.00")));
+    }
+
+    @Test
+    void recordPayment_ThrowsException_WhenPaymentExceedsNetPayable() {
+        mockSecurityContext("alice@campuscore.com");
+
+        FeeDto.PaymentRequest request = new FeeDto.PaymentRequest();
+        request.setInvoiceId(800L);
+        request.setPaidAmount(new BigDecimal("60000.00"));
+        request.setMode("upi");
+
+        when(userRepository.findByEmail("alice@campuscore.com")).thenReturn(Optional.of(currentUserSession));
+        when(invoiceRepository.findById(800L)).thenReturn(Optional.of(sampleInvoice));
+
+        FeeException ex = assertThrows(FeeException.class, () -> feeService.recordPayment(request));
+        assertTrue(ex.getMessage().contains("Payment amount exceeds remaining payable dues"));
     }
 
     // ─────────────────────────────────────────────────────────
-    // 3. PROOF OF PAYMENT TESTS
+    // PROOF OF PAYMENT TEST CASES
     // ─────────────────────────────────────────────────────────
 
     @Test
     void submitPaymentProof_Success() {
-        mockSecurityUser(studentUser);
-        MultipartFile mockFile = new MockMultipartFile("file", "proof.pdf", "application/pdf", new byte[]{1, 2, 3});
+        mockSecurityContext("alice@campuscore.com");
 
-        when(invoiceRepository.findById(10L)).thenReturn(Optional.of(sampleInvoice));
-        when(fileStorageService.store(eq("fee-proofs"), eq("10"), any())).thenReturn("fee-proofs/10/proof.pdf");
-        when(paymentRepository.save(any(FeePayment.class))).thenReturn(samplePayment);
+        MockMultipartFile proofFile = new MockMultipartFile("proofFile", "receipt.pdf", "application/pdf", "dummy pdf content".getBytes());
 
-        FeeDto.PaymentResponse response = feeService.submitPaymentProof(
-                10L, BigDecimal.valueOf(20000), "BANK_TRANSFER", "REF999", mockFile
-        );
+        when(userRepository.findByEmail("alice@campuscore.com")).thenReturn(Optional.of(currentUserSession));
+        when(invoiceRepository.findById(800L)).thenReturn(Optional.of(sampleInvoice));
+        when(fileStorageService.store(eq("fee-proofs"), eq("800"), any(MultipartFile.class))).thenReturn("fee-proofs/800/receipt.pdf");
+
+        when(paymentRepository.save(any(FeePayment.class))).thenAnswer(invocation -> {
+            FeePayment payment = invocation.getArgument(0);
+            payment.setPaymentId(950L);
+            return payment;
+        });
+
+        FeeDto.PaymentResponse response = feeService.submitPaymentProof(800L, new BigDecimal("50000.00"), "BANK_TRANSFER", "REF98765", proofFile);
 
         assertNotNull(response);
-        verify(fileStorageService, times(1)).store(eq("fee-proofs"), eq("10"), any());
-        verify(paymentRepository, times(1)).save(any(FeePayment.class));
+        assertEquals(950L, response.getPaymentId());
+        assertEquals("PENDING_VERIFICATION", response.getStatus());
+        assertTrue(response.isHasProof());
+        verify(eventPublisher).publishEvent(any(NotificationDto.Event.class));
+    }
+
+    @Test
+    void submitPaymentProof_ThrowsException_WhenInvalidMode() {
+        mockSecurityContext("alice@campuscore.com");
+        MockMultipartFile proofFile = new MockMultipartFile("proofFile", "receipt.jpg", "image/jpeg", "dummy image".getBytes());
+
+        when(userRepository.findByEmail("alice@campuscore.com")).thenReturn(Optional.of(currentUserSession));
+        when(invoiceRepository.findById(800L)).thenReturn(Optional.of(sampleInvoice));
+
+        FeeException ex = assertThrows(FeeException.class, () ->
+                feeService.submitPaymentProof(800L, new BigDecimal("50000.00"), "UPI", "REF98765", proofFile));
+        assertTrue(ex.getMessage().contains("Proof-of-payment upload is only used for DD or BANK_TRANSFER modes"));
     }
 
     @Test
     void confirmProofPayment_Success() {
-        samplePayment.setStatus(FeePayment.PaymentStatus.PENDING_VERIFICATION);
+        FeePayment pendingPayment = new FeePayment();
+        pendingPayment.setPaymentId(950L);
+        pendingPayment.setInvoice(sampleInvoice);
+        pendingPayment.setPaidAmount(new BigDecimal("50000.00"));
+        pendingPayment.setMode(FeePayment.PaymentMode.BANK_TRANSFER);
+        pendingPayment.setStatus(FeePayment.PaymentStatus.PENDING_VERIFICATION);
 
-        when(paymentRepository.findById(100L)).thenReturn(Optional.of(samplePayment));
+        when(paymentRepository.findById(950L)).thenReturn(Optional.of(pendingPayment));
 
-        FeeDto.PaymentResponse response = feeService.confirmProofPayment(100L);
+        FeeDto.PaymentResponse response = feeService.confirmProofPayment(950L);
 
         assertNotNull(response);
         assertEquals("RECEIVED", response.getStatus());
-        verify(paymentRepository, times(1)).save(samplePayment);
-        verify(invoiceRepository, times(1)).save(sampleInvoice);
+        assertEquals(FeeInvoice.InvoiceStatus.PAID, sampleInvoice.getStatus());
+        verify(paymentRepository).save(pendingPayment);
+        verify(eventPublisher).publishEvent(any(NotificationDto.Event.class));
     }
 
     @Test
     void rejectProofPayment_Success() {
-        samplePayment.setStatus(FeePayment.PaymentStatus.PENDING_VERIFICATION);
+        FeePayment pendingPayment = new FeePayment();
+        pendingPayment.setPaymentId(950L);
+        pendingPayment.setInvoice(sampleInvoice);
+        pendingPayment.setPaidAmount(new BigDecimal("50000.00"));
+        pendingPayment.setMode(FeePayment.PaymentMode.DD);
+        pendingPayment.setStatus(FeePayment.PaymentStatus.PENDING_VERIFICATION);
 
-        when(paymentRepository.findById(100L)).thenReturn(Optional.of(samplePayment));
+        when(paymentRepository.findById(950L)).thenReturn(Optional.of(pendingPayment));
 
-        FeeDto.PaymentResponse response = feeService.rejectProofPayment(100L, "Illegible receipt");
+        FeeDto.PaymentResponse response = feeService.rejectProofPayment(950L, "Illegible receipt image");
 
         assertNotNull(response);
         assertEquals("REJECTED", response.getStatus());
-        verify(paymentRepository, times(1)).save(samplePayment);
+        assertEquals("Illegible receipt image", response.getVerificationReason());
+        verify(paymentRepository).save(pendingPayment);
+        verify(eventPublisher).publishEvent(any(NotificationDto.Event.class));
     }
-
-    // ─────────────────────────────────────────────────────────
-    // 4. FILE DOWNLOAD & QUERY TESTS
-    // ─────────────────────────────────────────────────────────
 
     @Test
     void downloadProof_Success() {
-        mockSecurityUser(studentUser);
-        samplePayment.setProofPath("fee-proofs/10/proof.pdf");
+        mockSecurityContext("alice@campuscore.com");
 
-        when(paymentRepository.findById(100L)).thenReturn(Optional.of(samplePayment));
-        when(fileStorageService.read("fee-proofs/10/proof.pdf")).thenReturn(new byte[]{1, 2, 3});
+        FeePayment paymentWithProof = new FeePayment();
+        paymentWithProof.setPaymentId(950L);
+        paymentWithProof.setInvoice(sampleInvoice);
+        paymentWithProof.setProofPath("fee-proofs/800/receipt.pdf");
 
-        byte[] result = feeService.downloadProof(100L);
+        when(userRepository.findByEmail("alice@campuscore.com")).thenReturn(Optional.of(currentUserSession));
+        when(paymentRepository.findById(950L)).thenReturn(Optional.of(paymentWithProof));
+        when(fileStorageService.read("fee-proofs/800/receipt.pdf")).thenReturn("file content bytes".getBytes());
 
-        assertNotNull(result);
-        assertEquals(3, result.length);
+        byte[] content = feeService.downloadProof(950L);
+
+        assertNotNull(content);
+        assertTrue(content.length > 0);
     }
+
+    // ─────────────────────────────────────────────────────────
+    // READ & QUERY OPERATION TEST CASES
+    // ─────────────────────────────────────────────────────────
 
     @Test
     void getStudentInvoices_Success() {
-        mockSecurityUser(studentUser);
+        mockSecurityContext("alice@campuscore.com");
+        when(userRepository.findByEmail("alice@campuscore.com")).thenReturn(Optional.of(currentUserSession));
+        when(invoiceRepository.findByStudentUserId(700L)).thenReturn(Collections.singletonList(sampleInvoice));
 
-        when(invoiceRepository.findByStudentUserId(1L)).thenReturn(List.of(sampleInvoice));
+        List<FeeDto.InvoiceResponse> results = feeService.getStudentInvoices(700L);
 
-        List<FeeDto.InvoiceResponse> result = feeService.getStudentInvoices(1L);
+        assertNotNull(results);
+        assertEquals(1, results.size());
+    }
 
-        assertNotNull(result);
-        assertEquals(1, result.size());
+    @Test
+    void getInvoicePayments_Success() {
+        mockSecurityContext("alice@campuscore.com");
+        when(userRepository.findByEmail("alice@campuscore.com")).thenReturn(Optional.of(currentUserSession));
+        when(invoiceRepository.findById(800L)).thenReturn(Optional.of(sampleInvoice));
+        when(paymentRepository.findByInvoice_InvoiceId(800L)).thenReturn(Collections.singletonList(samplePayment));
+
+        List<FeeDto.PaymentResponse> results = feeService.getInvoicePayments(800L);
+
+        assertNotNull(results);
+        assertEquals(1, results.size());
     }
 
     @Test
     void getInvoicesByStatus_Success() {
         Pageable pageable = PageRequest.of(0, 10);
-        Page<FeeInvoice> page = new PageImpl<>(List.of(sampleInvoice));
+        Page<FeeInvoice> pagedInvoices = new PageImpl<>(Collections.singletonList(sampleInvoice));
 
-        when(invoiceRepository.findByStatus(FeeInvoice.InvoiceStatus.GENERATED, pageable)).thenReturn(page);
+        when(invoiceRepository.findByStatus(FeeInvoice.InvoiceStatus.GENERATED, pageable)).thenReturn(pagedInvoices);
 
-        Page<FeeDto.InvoiceResponse> result = feeService.getInvoicesByStatus("GENERATED", pageable);
+        Page<FeeDto.InvoiceResponse> resultPage = feeService.getInvoicesByStatus("generated", pageable);
 
-        assertNotNull(result);
-        assertEquals(1, result.getTotalElements());
+        assertNotNull(resultPage);
+        assertEquals(1, resultPage.getContent().size());
+        assertEquals("GENERATED", resultPage.getContent().get(0).getStatus());
     }
 }

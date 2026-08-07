@@ -150,14 +150,14 @@ export default function ExamDetail() {
                 </div>
                 {records.map((r, i) => (
                   <div key={i} className="flex gap-2 items-center">
-                    <div className="flex-1 min-w-5">
+                    <div className="flex-5 min-w-500">
                       <StudentSelect
                         courseId={exam?.courseId}
                         value={r.studentId}
                         onChange={(id) => upd(i, 'studentId', id ?? '')}
                       />
                     </div>
-                    <input type="number" min={0} max={exam?.maxMarks ?? undefined} step="0.01" className="field w-28 shrink-10" value={r.marksObtained} onChange={(e) => upd(i, 'marksObtained', e.target.value)} placeholder={exam?.maxMarks != null ? `0–${exam.maxMarks}` : 'Marks'} />
+                    <input type="number" min={0} max={exam?.maxMarks ?? undefined} step="0.01" className="field w-28 shrink-50" value={r.marksObtained} onChange={(e) => upd(i, 'marksObtained', e.target.value)} placeholder={exam?.maxMarks != null ? `0–${exam.maxMarks}` : 'Marks'} />
                     <button onClick={() => setRecords((rs) => rs.filter((_, idx) => idx !== i))} className="p-2 rounded-lg hover:bg-rose-500/10 text-rose-500 shrink-0"><Trash2 size={16} /></button>
                   </div>
                 ))}
